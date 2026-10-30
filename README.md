@@ -36,3 +36,6 @@ Next: Power BI dashboard, Streamlit approve/reject page, RAG Q&A, report.
 - Power BI: <name>
 - Streamlit + RAG: <name>
 - Report: <name>
+
+## Data 
+kaggle:https://www.kaggle.com/datasets/milanzdravkovic/pharma-sales-data
