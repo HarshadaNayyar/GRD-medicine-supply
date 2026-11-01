@@ -120,8 +120,8 @@ export default function NetworkMap({
     const frame = () => {
       if (coordinates.length)
         m.fitBounds(L.latLngBounds(coordinates), {
-          paddingTopLeft: [45, 70],
-          paddingBottomRight: [115, 70],
+          paddingTopLeft: [45, 35],
+          paddingBottomRight: [115, 45],
           maxZoom: 7,
           animate: false,
         });
@@ -231,8 +231,8 @@ export default function NetworkMap({
         .map((x) => [x.latitude!, x.longitude!] as L.LatLngTuple);
       if (coords.length)
         map.current.fitBounds(L.latLngBounds(coords), {
-          paddingTopLeft: [45, 70],
-          paddingBottomRight: [115, 70],
+          paddingTopLeft: [45, 35],
+          paddingBottomRight: [115, 45],
           maxZoom: 7,
           animate: true,
         });
