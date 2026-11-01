@@ -516,6 +516,10 @@ def create_app(database_url=None):
         d.scope(u, b.location_id)
 
         def work():
+            if data.expected_updated_at is not None and (
+                d.utc_datetime(data.expected_updated_at) != d.utc_datetime(b.updated_at)
+            ):
+                d.fail("Stock changed since the mobile count snapshot; refresh and recount required")
             case = Case(
                 org_id=u.org_id,
                 location_id=b.location_id,
@@ -533,7 +537,9 @@ def create_app(database_url=None):
             d.audit(s, u, "count.recorded", case.id, case.details, [b.location_id])
             return d.record(case)
 
-        return d.once(s, u, key, "count:" + batch_id, data.model_dump(), work)
+        # Omit the new optional snapshot when absent so pre-mobile idempotency
+        # records keep the same digest after deploying this compatible extension.
+        return d.once(s, u, key, "count:" + batch_id, data.model_dump(exclude_none=True), work)
 
     @app.post("/api/v1/inventory/adjustments", tags=["inventory"])
     def adjust(data: v.Adjustment, key: str = Header(alias="Idempotency-Key"), ctx=Depends(context)):

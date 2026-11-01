@@ -56,6 +56,46 @@ def test_count_adjustment_requires_recount_after_stock_moves_and_returns_to_same
     assert response.status_code == 409 and "recount" in response.text
 
 
+def test_offline_count_rejects_stock_changed_before_upload_and_replays_recorded_result(env):
+    batches = env.client.get("/api/v1/inventory/batches", headers=env.headers).json()["items"]
+    snapshot = next(b for b in batches if b["id"] == "B-SOURCE")["updated_at"]
+    body = {"quantity": 60, "reason": "Mobile physical count", "expected_updated_at": snapshot}
+    first = post(env, "/inventory/batches/B-SOURCE/count", body, "mobile-count")
+    assert first.status_code == 200
+    assert (
+        post(
+            env,
+            "/inventory/batches/B-SOURCE/issue",
+            {"quantity": 10, "reason": "Customer issue", "as_of": env.today},
+            "after-mobile-snapshot",
+        ).status_code
+        == 200
+    )
+    replayed = post(env, "/inventory/batches/B-SOURCE/count", body, "mobile-count")
+    assert replayed.status_code == 200 and replayed.json()["id"] == first.json()["id"]
+    stale = post(env, "/inventory/batches/B-SOURCE/count", body, "another-mobile-count")
+    assert stale.status_code == 409 and "recount" in stale.text
+
+
+def test_mobile_count_accepts_equivalent_timezone_snapshot(env):
+    batches = env.client.get("/api/v1/inventory/batches", headers=env.headers).json()["items"]
+    raw = next(b for b in batches if b["id"] == "B-SOURCE")["updated_at"]
+    timestamp = datetime.fromisoformat(raw)
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    response = post(
+        env,
+        "/inventory/batches/B-SOURCE/count",
+        {
+            "quantity": 60,
+            "reason": "Mobile count in IST",
+            "expected_updated_at": timestamp.astimezone(ZoneInfo("Asia/Kolkata")).isoformat(),
+        },
+        "mobile-count-ist",
+    )
+    assert response.status_code == 200
+
+
 def test_password_whitespace_is_preserved_and_invalid_simulation_seed_is_rejected(env):
     password = " correct horse battery "
     created = post(

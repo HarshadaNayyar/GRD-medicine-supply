@@ -118,3 +118,5 @@ PostgreSQL integration tests rebuild a dedicated database named `grd_test`; neve
 - [Website / React Native integration](docs/CLIENT_INTEGRATION.md)
 - [PRD traceability](docs/PRD_STATUS.md)
 - [Data strategy](docs/DATA_STRATEGY.md)
+- [React Native mobile demo](docs/MOBILE_DEMO.md)
+- [Free Render / Neon hosting, with optional Vercel website](docs/FREE_DEPLOYMENT.md)

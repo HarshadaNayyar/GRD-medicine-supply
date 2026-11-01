@@ -1,6 +1,8 @@
 # Website and React Native integration
 
-API prefix `/api/v1`; local server `http://127.0.0.1:8011`; interactive contracts `/docs`; machine-readable `/openapi.json`. `docs/openapi.json` is a checked-in contract snapshot. `clients/grd-client.ts` provides a shared transport and explicit offline command IDs.
+API prefix `/api/v1`; local server `http://127.0.0.1:8011`; interactive contracts `/docs`; machine-readable `/openapi.json`. `docs/openapi.json` is a checked-in contract snapshot. `clients/grd-client.ts` provides a starter transport. The implemented Expo app lives in `mobile`, with native secure storage, session fencing and a bounded persistent outbox; see `docs/MOBILE_DEMO.md`. Product types, display helpers and prioritised action logic are shared by both clients in `shared`.
+
+Mobile physical counts include `expected_updated_at` from the original batch snapshot. A changed batch rejects the delayed upload with 409 and requires a recount; already-recorded retries still return the same recorded result. The field is optional for existing online clients, and absence preserves the original idempotency digest.
 
 ## Identity
 

@@ -3181,6 +3181,18 @@
             "maxLength": 2000,
             "minLength": 3,
             "title": "Reason"
+          },
+          "expected_updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Updated At"
           }
         },
         "additionalProperties": false,

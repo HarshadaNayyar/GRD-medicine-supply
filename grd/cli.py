@@ -107,7 +107,7 @@ def main():
             if args.command == "worker-once":
                 break
             if not ran:
-                time.sleep(1)
+                time.sleep(max(1, float(os.getenv("GRD_WORKER_POLL_SECONDS", "1"))))
     elif args.command == "recover-jobs":
         from .models import Job, now
 

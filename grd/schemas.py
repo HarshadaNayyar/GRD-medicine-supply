@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints
@@ -138,6 +138,7 @@ class Hold(Input):
 class Count(Input):
     quantity: Nonnegative
     reason: Reason
+    expected_updated_at: datetime | None = None
 
 
 class Adjustment(Input):

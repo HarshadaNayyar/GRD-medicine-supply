@@ -1,6 +1,8 @@
 import type { Data, Me } from "./types";
 
 let accessToken: string | null = null;
+// Optional hosted API for a separate Vercel frontend. Same-origin stays the default.
+const apiOrigin = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 let sessionVersion = 0;
 const pendingKeys = new Map<string, string>();
 export const getSessionVersion = () => sessionVersion;
@@ -32,7 +34,7 @@ export async function api<T>(
   key?: string,
 ): Promise<T> {
   const version = sessionVersion;
-  const response = await fetch(`/api/v1${path}`, {
+  const response = await fetch(`${apiOrigin}/api/v1${path}`, {
     method,
     signal: AbortSignal.timeout(30000),
     headers: {
@@ -161,7 +163,7 @@ export async function localDemo() {
 }
 export async function upload<T>(path: string, body: FormData): Promise<T> {
   const version = sessionVersion;
-  const response = await fetch("/api/v1" + path, {
+  const response = await fetch(apiOrigin + "/api/v1" + path, {
     method: "POST",
     signal: AbortSignal.timeout(90000),
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
