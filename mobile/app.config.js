@@ -1,7 +1,7 @@
 const expo = {
   name: "GRD Supply",
   slug: "grd-supply-mobile",
-  version: "1.0.0",
+  version: "1.1.0",
   orientation: "default",
   icon: "./assets/icon.png",
   userInterfaceStyle: "light",
@@ -15,6 +15,7 @@ const expo = {
     },
   },
   android: {
+    versionCode: 2,
     adaptiveIcon: {
       backgroundColor: "#193C32",
       foregroundImage: "./assets/android-icon-foreground.png",

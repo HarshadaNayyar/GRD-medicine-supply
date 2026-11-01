@@ -3,7 +3,7 @@ import os
 import pytest
 from sqlalchemy.engine import make_url
 
-from scripts.cloud_demo import configure
+from grd.cloud_demo import configure
 
 
 def test_cloud_demo_requires_persistent_postgres(monkeypatch):

@@ -90,9 +90,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [network, setNetwork] = useState<Network | null>(null);
   const [product, setProduct] = useState("");
   const [origin, setOrigin] = useState(
-    Platform.OS === "android"
-      ? "http://10.0.2.2:8011"
-      : "http://127.0.0.1:8011",
+    serverOrigin(
+      process.env.EXPO_PUBLIC_GRD_API_URL ||
+        (Platform.OS === "android"
+          ? "http://10.0.2.2:8011"
+          : "http://127.0.0.1:8011"),
+    ),
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
