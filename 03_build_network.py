@@ -3,14 +3,14 @@ import pandas as pd
 # ---------- products ----------
 products = pd.DataFrame([
  # sku_id, name, form, pack_size, unit_cost, shelf_life_days, transfer_allowed
- ("M01AB","Diclofenac 50mg tablet","tablet",10,1.2,730,1),
- ("M01AE","Ibuprofen 400mg tablet","tablet",10,1.0,730,1),
- ("N02BA","Aspirin 75mg tablet","tablet",14,0.8,730,1),
- ("N02BE","Paracetamol 500mg tablet","tablet",10,0.6,1095,1),
- ("N05B","Anxiolytic (demo, controlled)","tablet",10,3.5,730,0),
- ("N05C","Hypnotic (demo, controlled)","tablet",10,4.0,730,0),
- ("R03","Salbutamol syrup","syrup",1,45.0,540,1),
- ("R06","Cetirizine 10mg tablet","tablet",10,0.9,1095,1),
+ ("M01AB","ATC M01AB category (synthetic allocation)","category-unit",1,0,730,1),
+ ("M01AE","ATC M01AE category (synthetic allocation)","category-unit",1,0,730,1),
+ ("N02BA","ATC N02BA category (synthetic allocation)","category-unit",1,0,730,1),
+ ("N02BE","ATC N02BE category (synthetic allocation)","category-unit",1,0,1095,1),
+ ("N05B","Anxiolytic (demo, controlled)","category-unit",1,0,730,0),
+ ("N05C","Hypnotic (demo, controlled)","category-unit",1,0,730,0),
+ ("R03","ATC R03 category (synthetic allocation)","category-unit",1,0,540,1),
+ ("R06","ATC R06 category (synthetic allocation)","category-unit",1,0,1095,1),
 ], columns=["sku_id","name","dosage_form","pack_size","unit_cost",
             "shelf_life_days","transfer_allowed"])
 
@@ -41,3 +41,6 @@ routes = pd.DataFrame([
 for name, d in [("products",products),("locations",locations),("supply_routes",routes)]:
     d.to_csv(f"{name}.csv", index=False)
 print(products.shape, locations.shape, routes.shape)
+products["unit_cost"] = None  # Category data has no verified unit valuation.
+products["provenance"] = "synthetic category allocation; no observed Assam SKU history"
+products.to_csv("products.csv", index=False)

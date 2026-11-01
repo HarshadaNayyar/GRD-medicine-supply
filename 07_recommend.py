@@ -1,4 +1,5 @@
 import math
+import os
 import pandas as pd
 
 W = pd.read_csv("shortage_warnings.csv", parse_dates=["shortage_date"])
@@ -6,7 +7,7 @@ routes = pd.read_csv("supply_routes.csv")
 routes = routes[routes.route_type == "replenishment"].set_index("destination")
 products = pd.read_csv("products.csv").set_index("sku_id")
 
-TODAY = pd.Timestamp("2019-09-05")      # same snapshot date that the projection printed
+TODAY = pd.Timestamp(os.getenv("GRD_AS_OF", "2019-09-05"))      # same snapshot date that the projection printed
 REVIEW_DAYS = 7
 
 rows = []
