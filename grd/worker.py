@@ -27,6 +27,7 @@ def run_once(factory):
         j.started_at = now()
         j.progress = 10
         identifier, payload, kind, actor, org = j.id, j.payload, j.kind, j.actor_id, j.org_id
+        claimed_at = j.started_at
     try:
         with transaction(factory) as s:
             user = s.get(User, actor)
@@ -64,23 +65,32 @@ def run_once(factory):
                 payload["proposed_safety_days"],
             )
         with transaction(factory) as s:
-            j = s.get(Job, identifier)
-            if j.status != "cancelled":
+            j = s.scalar(
+                select(Job)
+                .where(Job.id == identifier, Job.status == "running", Job.started_at == claimed_at)
+                .with_for_update()
+            )
+            if j is not None:
                 j.result = {
                     **result,
                     "source_cutoff": payload["as_of"],
                     "product_id": payload["product_id"],
                     "location_id": payload["location_id"],
                     "dataset_ids": dataset_ids,
-                    "evidence_type": evidence_type,
+                    "source_evidence_type": evidence_type,
+                    "evidence_type": result.get("evidence_type", evidence_type),
                 }
                 j.status = "completed"
                 j.progress = 100
     except Exception as exc:
         logger.exception("job failed id=%s", identifier)
         with transaction(factory) as s:
-            j = s.get(Job, identifier)
-            if j.status != "cancelled":
+            j = s.scalar(
+                select(Job)
+                .where(Job.id == identifier, Job.status == "running", Job.started_at == claimed_at)
+                .with_for_update()
+            )
+            if j is not None:
                 j.status = "failed"
                 j.error = str(exc)[:1000]
     return True

@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints
 
 Positive = Annotated[StrictInt, Field(gt=0, le=100_000_000)]
 Nonnegative = Annotated[StrictInt, Field(ge=0, le=100_000_000)]
@@ -15,12 +15,12 @@ class Input(BaseModel):
 
 class Login(Input):
     email: Annotated[str, Field(max_length=200)]
-    password: Annotated[str, Field(max_length=200)]
+    password: Annotated[str, StringConstraints(strip_whitespace=False), Field(max_length=200)]
 
 
 class UserInput(Input):
     email: Annotated[str, Field(min_length=3, max_length=200)]
-    password: Annotated[str, Field(min_length=12, max_length=200)]
+    password: Annotated[str, StringConstraints(strip_whitespace=False), Field(min_length=12, max_length=200)]
     role: Literal["manager", "planner", "operator", "steward", "viewer"]
     location_ids: list[Identifier]
 
@@ -168,7 +168,7 @@ class SimulationJob(Input):
     product_id: Identifier
     location_id: Identifier
     as_of: date
-    seed: int = 42
+    seed: Annotated[StrictInt, Field(ge=0, le=4_294_967_295)] = 42
     days: Annotated[int, Field(ge=30, le=365)] = 90
     lead_days: Annotated[int, Field(ge=1, le=60)] = 5
     proposed_safety_days: Annotated[int, Field(ge=0, le=90)] = 10

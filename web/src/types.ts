@@ -111,6 +111,8 @@ export interface Plan {
   created_at: string;
 }
 export interface ShipmentLine {
+  batch_code?: string;
+  expiry?: string;
   id: string;
   source_batch_id: string;
   quantity: number;
@@ -171,6 +173,7 @@ export interface Metrics {
   interval_coverage?: number;
 }
 export interface ForecastResult {
+  selection?: string;
   status?: string;
   reason?: string;
   selected_model?: string;

@@ -10,6 +10,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    Index,
     String,
     Text,
     UniqueConstraint,
@@ -133,6 +134,7 @@ class Demand(Record, Base):
     measure: Mapped[str] = mapped_column(String(30))
     dataset_id: Mapped[str] = mapped_column(String(100))
     __table_args__ = (
+        Index("ix_demand_series_date", "org_id", "product_id", "location_id", "measure", "date"),
         UniqueConstraint("org_id", "dataset_id", "date", "product_id", "location_id", "measure"),
         CheckConstraint("quantity >= 0"),
     )

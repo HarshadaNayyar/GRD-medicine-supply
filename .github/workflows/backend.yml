@@ -37,9 +37,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.lock && pip install --no-deps -e .
-      - run: ruff check grd tests
+      - run: ruff check grd tests scripts
       - run: pytest -q
       - run: grd migrate && alembic check
         env:
           DATABASE_URL: postgresql+psycopg://grd:ci-only-password@localhost:5432/grd_test
-      - run: GRD_TEST_DATABASE_URL=postgresql+psycopg://grd:ci-only-password@localhost:5432/grd_test pytest tests/test_postgres.py -q
+      - run: GRD_TEST_DATABASE_URL=postgresql+psycopg://grd:ci-only-password@localhost:5432/grd_test pytest -q

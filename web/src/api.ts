@@ -1,8 +1,21 @@
 import type { Data, Me } from "./types";
 
 let accessToken: string | null = null;
+let sessionVersion = 0;
+const pendingKeys = new Map<string, string>();
+export const getSessionVersion = () => sessionVersion;
+export class SessionChangedError extends Error {
+  constructor() {
+    super("The signed-in session changed.");
+  }
+}
 export function setToken(value: string | null) {
+  sessionVersion++;
+  pendingKeys.clear();
   accessToken = value;
+}
+function checkSession(version: number) {
+  if (version !== sessionVersion) throw new SessionChangedError();
 }
 export class ApiError extends Error {
   constructor(
@@ -18,8 +31,10 @@ export async function api<T>(
   body?: unknown,
   key?: string,
 ): Promise<T> {
+  const version = sessionVersion;
   const response = await fetch(`/api/v1${path}`, {
     method,
+    signal: AbortSignal.timeout(30000),
     headers: {
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
@@ -27,18 +42,40 @@ export async function api<T>(
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
-  const result = await response
-    .json()
-    .catch(() => ({ detail: "The service returned an unreadable response." }));
+  return readResponse<T>(response, version);
+}
+async function readResponse<T>(
+  response: Response,
+  version: number,
+): Promise<T> {
+  checkSession(version);
+  let result: unknown;
+  try {
+    result = await response.json();
+  } catch {
+    checkSession(version);
+    if (response.ok)
+      throw new ApiError(
+        502,
+        "The service returned an unreadable response. Retry to confirm the recorded result.",
+      );
+    result = { detail: "The service returned an unreadable response." };
+  }
+  checkSession(version);
   if (!response.ok) {
     if (response.status === 401) {
-      accessToken = null;
-      window.dispatchEvent(new Event("grd:unauthorised"));
+      setToken(null);
+      if (typeof window !== "undefined")
+        window.dispatchEvent(new Event("grd:unauthorised"));
     }
+    const detail =
+      result && typeof result === "object" && "detail" in result
+        ? result.detail
+        : null;
     throw new ApiError(
       response.status,
-      typeof result.detail === "string"
-        ? result.detail
+      typeof detail === "string"
+        ? detail
         : response.status === 422
           ? "Please check quantities, dates and required fields."
           : "The action could not be completed.",
@@ -60,6 +97,7 @@ export async function all<T>(path: string): Promise<T[]> {
   throw new Error("Too many records to load. Narrow the scope.");
 }
 export async function loadData(): Promise<Data> {
+  const version = sessionVersion;
   const me = await api<Me>("/me");
   const admin = ["admin", "manager", "steward"].includes(me.role);
   const [
@@ -84,12 +122,11 @@ export async function loadData(): Promise<Data> {
     all<Data["cases"][number]>("/cases"),
     all<Data["jobs"][number]>("/jobs"),
     admin ? all<Data["audit"][number]>("/audit") : Promise.resolve([]),
-    admin
-      ? api<{ items: Data["datasets"] }>("/datasets").then((x) => x.items)
-      : Promise.resolve([]),
+    admin ? all<Data["datasets"][number]>("/datasets") : Promise.resolve([]),
     api<Data["reconciliation"]>("/inventory/reconciliation"),
   ]);
   const routes = await api<{ items: Data["routes"] }>("/routes");
+  checkSession(version);
   return {
     me,
     products,
@@ -107,7 +144,6 @@ export async function loadData(): Promise<Data> {
   };
 }
 // Keys remain stable across retry of an identical operation in this browser session.
-const pendingKeys = new Map<string, string>();
 export async function command<T>(path: string, body: unknown): Promise<T> {
   const identity = path + JSON.stringify(body);
   if (!pendingKeys.has(identity))
@@ -124,18 +160,12 @@ export async function localDemo() {
   setToken(value.access_token);
 }
 export async function upload<T>(path: string, body: FormData): Promise<T> {
+  const version = sessionVersion;
   const response = await fetch("/api/v1" + path, {
     method: "POST",
+    signal: AbortSignal.timeout(90000),
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
     body,
   });
-  const value = await response.json();
-  if (!response.ok)
-    throw new ApiError(
-      response.status,
-      typeof value.detail === "string"
-        ? value.detail
-        : "The file could not be validated.",
-    );
-  return value as T;
+  return readResponse<T>(response, version);
 }

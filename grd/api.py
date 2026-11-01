@@ -131,7 +131,7 @@ def create_app(database_url=None):
         try:
             with engine.connect() as conn:
                 revision = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-                if revision != "afc5260f2879":
+                if revision != "b8d3c71a402e":
                     raise RuntimeError("Schema revision does not match this application release")
         except Exception:
             raise HTTPException(503, "Database or migrations unavailable") from None
@@ -521,7 +521,12 @@ def create_app(database_url=None):
                 location_id=b.location_id,
                 kind="count_difference",
                 reference=b.id,
-                details={"observed": data.quantity, "recorded": b.quantity, "reason": data.reason},
+                details={
+                    "observed": data.quantity,
+                    "recorded": b.quantity,
+                    "reason": data.reason,
+                    "recorded_updated_at": b.updated_at.isoformat(),
+                },
             )
             s.add(case)
             s.flush()
@@ -541,7 +546,10 @@ def create_app(database_url=None):
             if case.kind != "count_difference" or case.status != "open":
                 d.fail("Count case is not open")
             b = d.get(s, Batch, case.reference, u)
-            if b.quantity != case.details["recorded"]:
+            if b.quantity != case.details["recorded"] or (
+                case.details.get("recorded_updated_at") is not None
+                and b.updated_at.isoformat() != case.details["recorded_updated_at"]
+            ):
                 d.fail("Stock changed since count; recount required")
             d.change(s, u, b, case.details["observed"] - b.quantity, "count_adjustment", case.id)
             case.status = "resolved"
@@ -659,9 +667,11 @@ def create_app(database_url=None):
                         "source_id": p.source_id,
                         "destination_id": p.destination_id,
                         "lines": [
-                            d.record(line)
-                            for line in s.scalars(
-                                select(ShipmentLine).where(ShipmentLine.shipment_id == x.id)
+                            {**d.record(line), "batch_code": code, "expiry": expiry}
+                            for line, code, expiry in s.execute(
+                                select(ShipmentLine, Batch.code, Batch.expiry)
+                                .join(Batch, ShipmentLine.source_batch_id == Batch.id)
+                                .where(ShipmentLine.shipment_id == x.id, Batch.org_id == u.org_id)
                             )
                         ],
                     }
@@ -756,17 +766,19 @@ def create_app(database_url=None):
         d.role(u, "operator", "manager", "steward", "planner")
         case = d.get(s, Case, case_id, u)
         d.scope(u, case.location_id)
-        if data.owner_id:
-            owner = d.get(s, User, data.owner_id, u)
-            if not owner.active or not d.allowed(owner, case.location_id):
-                d.fail("Owner cannot access this case", 422)
+        if "owner_id" in data.model_fields_set:
+            if data.owner_id is not None:
+                owner = d.get(s, User, data.owner_id, u)
+                if not owner.active or not d.allowed(owner, case.location_id):
+                    d.fail("Owner cannot access this case", 422)
             case.owner_id = data.owner_id
         if data.resolve:
             d.role(u, "manager", "steward")
             if case.kind in ["count_difference", "return_disposition"]:
                 d.fail("Use the stock adjustment/disposition action to resolve this case")
             case.status = "resolved"
-        case.due_on = data.due_on
+        if "due_on" in data.model_fields_set:
+            case.due_on = data.due_on
         case.comments = [*case.comments, {"actor_id": u.id, "text": data.comment}]
         d.audit(s, u, "case.updated", case.id, data.model_dump(), [case.location_id])
         return d.record(case)
@@ -920,7 +932,9 @@ def create_app(database_url=None):
     def job_cancel(job_id: str, ctx=Depends(context)):
         s, u, _ = ctx
         d.role(u, "planner", "manager")
-        j = d.get(s, Job, job_id, u)
+        j = s.scalar(select(Job).where(Job.id == job_id, Job.org_id == u.org_id).with_for_update())
+        if j is None:
+            d.fail("Record not found", 404)
         d.scope(u, j.payload["location_id"])
         if j.status not in ["queued", "running"]:
             d.fail("Job already finished")
@@ -941,10 +955,10 @@ def create_app(database_url=None):
         return import_demand(s, u, o, raw, file.filename or "", metadata, dry_run)
 
     @app.get("/api/v1/datasets", tags=["data"])
-    def datasets(ctx=Depends(context)):
+    def datasets(offset: int = 0, limit: int = 200, ctx=Depends(context)):
         s, u, _ = ctx
         d.role(u, "steward", "manager")
-        return page(items(s, Dataset, u), 0, 200)
+        return page(items(s, Dataset, u), offset, limit)
 
     @app.get("/api/v1/demand", tags=["data"])
     def demand(location_id: str, product_id: str, offset: int = 0, limit: int = 100, ctx=Depends(context)):
@@ -977,6 +991,7 @@ def create_app(database_url=None):
     def expiry_rescue(as_of: date, within_days: int = 60, ctx=Depends(context)):
         s, u, o = ctx
         d.role(u, "planner", "manager")
+        d.operating_date(o, as_of)
         if not 1 <= within_days <= 365:
             d.fail("within_days must be 1..365", 422)
         result = []
@@ -1043,6 +1058,7 @@ def create_app(database_url=None):
     def allocate(source_id: str, product_id: str, as_of: date, ctx=Depends(context)):
         s, u, o = ctx
         d.role(u, "planner", "manager")
+        d.operating_date(o, as_of)
         d.scope(u, source_id)
         product = d.get(s, Product, product_id, u)
         d.get(s, Location, source_id, u)
@@ -1140,6 +1156,7 @@ def create_app(database_url=None):
     @app.get("/api/v1/planning/options", tags=["map and planning"])
     def options(product_id: str, destination_id: str, quantity: int, as_of: date, ctx=Depends(context)):
         s, u, o = ctx
+        d.operating_date(o, as_of)
         d.scope(u, destination_id)
         if quantity <= 0:
             d.fail("Quantity must be positive", 422)

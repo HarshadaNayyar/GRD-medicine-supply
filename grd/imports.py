@@ -1,8 +1,8 @@
 import csv
 from datetime import date
+from typing import Annotated, Literal
 import hashlib
 import io
-import json
 import zipfile
 
 from pydantic import Field, ValidationError
@@ -21,20 +21,28 @@ class Row(Input):
     measure: str = Field(pattern="^(sales|requested)$")
 
 
+class Provenance(Input):
+    name: Annotated[str, Field(min_length=1, max_length=200)]
+    source_url: Annotated[str, Field(min_length=1, max_length=2000)]
+    licence: Annotated[str, Field(min_length=1, max_length=1000)]
+    geography: Annotated[str, Field(min_length=1, max_length=200)]
+    evidence_type: Literal["observed", "synthetic", "derived"]
+    units: Annotated[str, Field(min_length=1, max_length=80)]
+    limitations: Annotated[
+        list[Annotated[str, Field(min_length=1, max_length=2000)]], Field(min_length=1, max_length=30)
+    ]
+
+
 def import_demand(s, user, org, raw, filename, metadata, dry_run):
     try:
-        meta = json.loads(metadata)
-        required = {"name", "source_url", "licence", "geography", "evidence_type", "units", "limitations"}
-        if (
-            not isinstance(meta, dict)
-            or not required.issubset(meta)
-            or meta["evidence_type"] not in ["observed", "synthetic", "derived"]
-        ):
-            raise ValueError("Missing provenance fields")
-        if any(not meta[k] for k in required):
-            raise ValueError("Provenance fields must not be empty")
+        meta = Provenance.model_validate_json(metadata).model_dump()
+        filename = filename.lower()
         if filename.endswith(".csv"):
-            data = list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
+            reader = csv.DictReader(io.StringIO(raw.decode("utf-8-sig")))
+            fields = reader.fieldnames or []
+            if len(fields) != len(set(fields)):
+                raise ValueError("Duplicate CSV column headers")
+            data = list(reader)
         elif filename.endswith(".xlsx"):
             with zipfile.ZipFile(io.BytesIO(raw)) as z:
                 if sum(x.file_size for x in z.infolist()) > 30_000_000 or len(z.infolist()) > 200:
@@ -46,6 +54,11 @@ def import_demand(s, user, org, raw, filename, metadata, dry_run):
             raise ValueError("Use CSV or XLSX")
     except (ValueError, UnicodeError, zipfile.BadZipFile) as exc:
         d.fail(str(exc), 422)
+    except Exception:
+        # Malformed workbook internals are input errors, not server failures.
+        d.fail("Cannot read this CSV/XLSX file; check its format and contents", 422)
+    if not data:
+        d.fail("The file contains no demand observations", 422)
     if len(data) > 10000:
         d.fail("Maximum 10,000 rows per upload; split larger files", 413)
     errors, good, seen = [], [], set()

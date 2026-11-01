@@ -5,7 +5,7 @@ import numpy as np
 
 def compare(mean, seed=42, days=90, lead_days=5, proposed_safety_days=10):
     rng = np.random.default_rng(seed)
-    demand = rng.poisson(max(mean, 0.1), days).astype(int)
+    demand = rng.poisson(max(mean, 0), days).astype(int)
     delay = rng.integers(lead_days, lead_days + 4, size=days)
     shelf = rng.integers(10, 45, size=days)
     opening = int(mean * 10)

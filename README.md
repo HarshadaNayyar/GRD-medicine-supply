@@ -50,6 +50,8 @@ Open **http://127.0.0.1:8011/**. Sign in with `demo@grd.local` (or your seeded e
 
 For frontend development, keep the backend/worker running and run `npm run dev` inside `web`. **http://127.0.0.1:5173/** proxies the actual API and supports a local synthetic demo login. That helper reads `.env` on the development server only, requires loopback access and the exact local Origin, and refuses non-synthetic organisations. It is absent from the production build. Tokens live in browser memory; refreshing the production page requires sign-in again.
 
+The [1 November audit](docs/AUDIT_2026-11-01.md) records 53 PostgreSQL backend tests, 18 web tests, the fixes and the larger-data read-load check.
+
 Read [the website walkthrough](docs/WEB_DEMO.md) for the demo sequence, limitations and checks.
 
 ## What is implemented

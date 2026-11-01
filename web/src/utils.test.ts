@@ -4,8 +4,15 @@ import {
   riskLevel,
   remainingDispatch,
   type Observation,
+  parseInstant,
 } from "./utils";
 import type { Data, NetworkRow, Plan } from "./types";
+
+it("reads naive SQLite UTC and aware PostgreSQL India timestamps as the same instant", () => {
+  expect(parseInstant("2026-11-01T08:00:00").getTime()).toBe(
+    parseInstant("2026-11-01T13:30:00+05:30").getTime(),
+  );
+});
 
 describe("decision evidence", () => {
   const week: Observation[] = Array.from({ length: 7 }, (_, i) => ({

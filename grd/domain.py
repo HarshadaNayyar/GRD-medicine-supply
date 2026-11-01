@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 import hashlib
 import json
 import math
@@ -27,6 +27,11 @@ from .models import (
 
 def fail(message, code=409):
     raise HTTPException(code, message)
+
+
+def utc_datetime(value):
+    # SQLite returns naive UTC; PostgreSQL may return an aware session-local time.
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
 def allowed(user, location_id):
@@ -174,8 +179,20 @@ def position(s, user, location, product, as_of):
         "usable": sum(b.quantity for b in eligible),
         "reserved": sum(b.reserved for b in eligible),
         "available": sum(b.quantity - b.reserved for b in eligible),
-        "updated_at": max((b.updated_at for b in all_batches), default=None),
+        # A new receipt must not make an older positive stock position look fresh.
+        "updated_at": min((b.updated_at for b in all_batches if b.quantity > 0), default=None)
+        or max((b.updated_at for b in all_batches), default=None),
     }
+
+
+def require_fresh_stock(org, stock):
+    if org.mode == "synthetic":
+        return
+    import os
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=float(os.getenv("STOCK_MAX_AGE_HOURS", "24")))
+    if any(b.quantity > 0 and utc_datetime(b.updated_at) < cutoff for b in stock):
+        fail("Source stock is stale; reconcile before creating or dispatching an actionable plan")
 
 
 def choose(s, user, org, source, dest, product_id, quantity, as_of, request_id=None, extra_reserved=None):
@@ -199,17 +216,7 @@ def choose(s, user, org, source, dest, product_id, quantity, as_of, request_id=N
         fail("Quantity must meet the route minimum and be an exact pack multiple", 422)
     arrival = as_of + timedelta(days=rt.lead_days_upper)
     eligible = batches(s, user, source, product_id, arrival, rt.min_shelf_days)
-    if org.mode != "synthetic":
-        from datetime import datetime, timezone
-        import os
-
-        max_age = float(os.getenv("STOCK_MAX_AGE_HOURS", "24"))
-        if any(
-            (datetime.now(timezone.utc) - b.updated_at.replace(tzinfo=timezone.utc)).total_seconds()
-            > max_age * 3600
-            for b in eligible
-        ):
-            fail("Source stock is stale; reconcile before creating an actionable plan")
+    require_fresh_stock(org, eligible)
     extra_reserved = extra_reserved or {}
     available = sum(max(0, b.quantity - b.reserved - extra_reserved.get(b.id, 0)) for b in eligible)
     own_rate, measure, samples = rate(s, user, product_id, source, as_of)
@@ -435,6 +442,7 @@ def dispatch(s, user, org, plan, quantity, as_of):
         if not n:
             continue
         b = get(s, Batch, a.batch_id, user)
+        require_fresh_stock(org, [b])
         if (
             b.status != "usable"
             or b.expiry < arrival + timedelta(days=rt.min_shelf_days)
@@ -550,16 +558,33 @@ def receive(s, user, org, shipment, items, as_of):
 
 
 def reconcile(s, user):
+    ledger_totals = (
+        select(Movement.batch_id, func.sum(Movement.delta).label("quantity"))
+        .where(Movement.org_id == user.org_id)
+        .group_by(Movement.batch_id)
+        .subquery()
+    )
+    reservation_totals = (
+        select(
+            Allocation.batch_id,
+            func.sum(Allocation.quantity - Allocation.dispatched - Allocation.released).label("quantity"),
+        )
+        .where(Allocation.org_id == user.org_id)
+        .group_by(Allocation.batch_id)
+        .subquery()
+    )
+    rows = s.execute(
+        select(
+            Batch, func.coalesce(ledger_totals.c.quantity, 0), func.coalesce(reservation_totals.c.quantity, 0)
+        )
+        .outerjoin(ledger_totals, ledger_totals.c.batch_id == Batch.id)
+        .outerjoin(reservation_totals, reservation_totals.c.batch_id == Batch.id)
+        .where(Batch.org_id == user.org_id)
+    )
     results = []
-    for b in s.scalars(select(Batch).where(Batch.org_id == user.org_id)):
+    for b, ledger, reserved in rows:
         if not allowed(user, b.location_id):
             continue
-        ledger = s.scalar(select(func.coalesce(func.sum(Movement.delta), 0)).where(Movement.batch_id == b.id))
-        reserved = s.scalar(
-            select(
-                func.coalesce(func.sum(Allocation.quantity - Allocation.dispatched - Allocation.released), 0)
-            ).where(Allocation.batch_id == b.id)
-        )
         results.append(
             {
                 "batch_id": b.id,

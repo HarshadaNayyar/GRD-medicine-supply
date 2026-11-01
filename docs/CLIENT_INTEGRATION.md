@@ -42,3 +42,11 @@ Native clients must use the server's clock/validation result, not adjust balance
 Android emulator can reach the host using `10.0.2.2` rather than `127.0.0.1`. iOS simulator can use host localhost. Physical devices require a deliberately configured reachable server and TLS. The supplied dev launcher binds localhost only. Configure CORS for the website's real origin; React Native is still protected by authentication and scope.
 
 Actual web UI, React Native persistence/scanning/push implementations and tests on both mobile platforms are separate client work. Backend command replay tests do not constitute native offline device validation.
+
+## Audit updates, 1 November 2026
+
+Dataset listings now accept offset/limit paging beyond the first 200 records. Shipment lines include batch_code/expiry for authorised destination receipt; source inventory remains scoped separately. Import provenance requires bounded strings and a nonempty list of limitations.
+
+Freshness uses the oldest positive batch and is rechecked at live dispatch. SQLite's naive timestamp fields represent UTC; PostgreSQL returns timezone-aware instants. The web client normalises both for the operations timeline. New count snapshots additionally retain the batch timestamp; recount legacy open cases before operational use.
+
+Completed calculations retain the current running lease and cannot overwrite cancellation/recovery. Simulation evidence remains synthetic_policy_simulation; source_evidence_type separately identifies the input organisation's mode. Web retries are session-bound, with bounded waits; they do not provide a durable native offline queue.

@@ -84,15 +84,22 @@ export function ResolveDialog({
       existing?.reason || "Replenishment to address projected shortage",
     ),
     [options, setOptions] = useState<Option[]>([]),
+    [optionsFor, setOptionsFor] = useState(""),
     [source, setSource] = useState(""),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [createdRequest, setCreatedRequest] = useState<string | null>(null);
-  const eligible = quantity > 0 && quantity % product.pack_size === 0;
+  const eligible =
+    Number.isSafeInteger(quantity) &&
+    quantity > 0 &&
+    quantity % product.pack_size === 0;
+  const optionsKey = JSON.stringify([product.id, dest, quantity, asOf]);
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setOptions([]);
+    setOptionsFor("");
     const timeout = setTimeout(() => {
       if (!eligible) {
         setOptions([]);
@@ -105,6 +112,7 @@ export function ResolveDialog({
         .then((r) => {
           if (cancelled) return;
           setOptions(r.options);
+          setOptionsFor(optionsKey);
           setSource((previous) =>
             r.options.some((x) => x.source_id === previous && x.feasible)
               ? previous
@@ -131,7 +139,10 @@ export function ResolveDialog({
       clearTimeout(timeout);
     };
   }, [dest, quantity, eligible, product.id, asOf, data.locations]);
-  const choice = options.find((x) => x.source_id === source && x.feasible);
+  const choice =
+    !loading && optionsFor === optionsKey
+      ? options.find((x) => x.source_id === source && x.feasible)
+      : undefined;
   const destination = data.locations.find((x) => x.id === dest);
   const sourceLocation = data.locations.find((x) => x.id === source);
   async function create() {
@@ -168,6 +179,7 @@ export function ResolveDialog({
   }
   return (
     <Modal
+      busy={busy}
       title="Find the right supply response"
       eyebrow="NEW SUPPLY PLAN"
       onClose={onClose}
@@ -184,14 +196,18 @@ export function ResolveDialog({
               {product.base_unit} · {product.pack_size} per pack
             </span>
           </div>
-          <Badge tone="demo">Synthetic scenario</Badge>
+          <Badge tone="demo">
+            {data.me.evidence_type === "synthetic"
+              ? "Synthetic scenario"
+              : "Declared source workflow"}
+          </Badge>
         </div>
         <div className="form-grid three">
           <label>
             Destination
             <select
               value={dest}
-              disabled={!!existing || !!createdRequest}
+              disabled={busy || !!existing || !!createdRequest}
               onChange={(e) => setDest(e.target.value)}
             >
               {data.locations
@@ -207,7 +223,7 @@ export function ResolveDialog({
             Quantity · {product.base_unit}s
             <input
               aria-label="Plan quantity"
-              disabled={!!createdRequest}
+              disabled={busy || !!createdRequest}
               type="number"
               min={product.pack_size}
               step={product.pack_size}
@@ -219,7 +235,7 @@ export function ResolveDialog({
             Needed by
             <input
               type="date"
-              disabled={!!createdRequest}
+              disabled={busy || !!createdRequest || !!existing}
               min={asOf}
               value={needed}
               onChange={(e) => setNeeded(e.target.value)}
@@ -245,7 +261,7 @@ export function ResolveDialog({
                 <button
                   key={option.source_id}
                   className={`source-option ${source === option.source_id ? "chosen" : ""} ${!option.feasible ? "unavailable" : ""}`}
-                  disabled={!option.feasible}
+                  disabled={busy || !option.feasible}
                   onClick={() => setSource(option.source_id)}
                 >
                   <span className="radio-dot">
@@ -318,7 +334,7 @@ export function ResolveDialog({
         <label className="full-label">
           Reason for this request
           <textarea
-            disabled={!!createdRequest}
+            disabled={busy || !!createdRequest || !!existing}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={2}
@@ -338,14 +354,19 @@ export function ResolveDialog({
         )}
       </div>
       <footer className="modal-footer">
-        <button className="button secondary" onClick={onClose}>
+        <button className="button secondary" disabled={busy} onClick={onClose}>
           Cancel
         </button>
         <button
           className="button primary"
           onClick={create}
           disabled={
-            !choice || !eligible || busy || reason.trim().length < 3 || !needed
+            loading ||
+            !choice ||
+            !eligible ||
+            busy ||
+            reason.trim().length < 3 ||
+            !needed
           }
         >
           {busy ? (
@@ -447,6 +468,7 @@ export function RescueDialog({
   }
   return (
     <Modal
+      busy={busy}
       title="Give short-dated stock a useful destination"
       eyebrow="EXPIRY RESCUE"
       onClose={onClose}
@@ -585,6 +607,7 @@ export function PlanDialog({
   }
   return (
     <Modal
+      busy={busy}
       title="A clear plan. A traceable outcome."
       eyebrow={`SUPPLY PLAN · ${current.id.slice(0, 8).toUpperCase()} · VERSION ${current.version}`}
       onClose={onClose}
@@ -755,6 +778,8 @@ export function PlanDialog({
       <footer className="modal-footer">
         <div>
           {hasRole(data, "manager") &&
+            canLocation(data, current.source_id) &&
+            canLocation(data, current.destination_id) &&
             !["completed", "cancelled"].includes(current.status) && (
               <button
                 className="text-button danger"
@@ -768,11 +793,17 @@ export function PlanDialog({
             )}
         </div>
         <div className="footer-buttons">
-          <button className="button secondary" onClick={onClose}>
+          <button
+            className="button secondary"
+            disabled={busy}
+            onClick={onClose}
+          >
             Close
           </button>
           {current.status === "proposed" &&
-            hasRole(data, "planner", "manager") && (
+            hasRole(data, "planner", "manager") &&
+            canLocation(data, current.source_id) &&
+            canLocation(data, current.destination_id) && (
               <button
                 className="button secondary"
                 disabled={busy || cancelling}
@@ -781,20 +812,23 @@ export function PlanDialog({
                 Revalidate proposal
               </button>
             )}
-          {current.status === "proposed" && hasRole(data, "manager") && (
-            <button
-              className="button primary"
-              disabled={busy || cancelling}
-              onClick={() => run("approve")}
-            >
-              {busy ? (
-                <LoaderCircle className="spin" size={16} />
-              ) : (
-                <ShieldCheck size={17} />
-              )}
-              Approve & reserve
-            </button>
-          )}
+          {current.status === "proposed" &&
+            hasRole(data, "manager") &&
+            canLocation(data, current.source_id) &&
+            canLocation(data, current.destination_id) && (
+              <button
+                className="button primary"
+                disabled={busy || cancelling}
+                onClick={() => run("approve")}
+              >
+                {busy ? (
+                  <LoaderCircle className="spin" size={16} />
+                ) : (
+                  <ShieldCheck size={17} />
+                )}
+                Approve & reserve
+              </button>
+            )}
           {["approved", "partial", "dispatched"].includes(current.status) &&
             remaining > 0 &&
             hasRole(data, "operator", "manager") &&
@@ -857,6 +891,8 @@ export function ReceiptDialog({
     lines.some((x) => x.accepted + x.damaged > 0) &&
     lines.every(
       (x) =>
+        Number.isSafeInteger(x.accepted) &&
+        Number.isSafeInteger(x.damaged) &&
         x.accepted >= 0 &&
         x.damaged >= 0 &&
         x.accepted + x.damaged <=
@@ -888,6 +924,7 @@ export function ReceiptDialog({
   }
   return (
     <Modal
+      busy={busy}
       title="Confirm what actually arrived"
       eyebrow="RECEIPT CONFIRMATION"
       onClose={onClose}
@@ -914,7 +951,9 @@ export function ReceiptDialog({
           return (
             <div className="receipt-line" key={line.line_id}>
               <div>
-                <strong>{batch?.code || line.line_id.slice(0, 8)}</strong>
+                <strong>
+                  {source.batch_code || batch?.code || line.line_id.slice(0, 8)}
+                </strong>
                 <Badge>
                   {number(source.quantity - source.received)} remaining
                 </Badge>
@@ -981,7 +1020,7 @@ export function ReceiptDialog({
         )}
       </div>
       <footer className="modal-footer">
-        <button className="button secondary" onClick={onClose}>
+        <button className="button secondary" disabled={busy} onClick={onClose}>
           Cancel
         </button>
         <button
@@ -1037,6 +1076,7 @@ export function StockDialog({
   }
   return (
     <Modal
+      busy={busy}
       title="Batch detail & control"
       eyebrow={current.code}
       onClose={onClose}
@@ -1137,7 +1177,7 @@ export function StockDialog({
         {error && <div className="inline-error">{error}</div>}
       </div>
       <footer className="modal-footer">
-        <button className="button secondary" onClick={onClose}>
+        <button className="button secondary" disabled={busy} onClick={onClose}>
           Close
         </button>
         <button
@@ -1145,7 +1185,7 @@ export function StockDialog({
           disabled={
             busy ||
             reason.trim().length < 3 ||
-            count < 0 ||
+            (mode === "count" && (!Number.isSafeInteger(count) || count < 0)) ||
             !(mode === "count"
               ? hasRole(data, "operator", "steward", "manager")
               : hasRole(data, "steward", "manager")) ||
@@ -1205,6 +1245,7 @@ export function CaseDialog({
   }
   return (
     <Modal
+      busy={busy}
       title={title(current.kind)}
       eyebrow="RECONCILIATION CASE"
       onClose={onClose}
@@ -1250,7 +1291,7 @@ export function CaseDialog({
         {error && <div className="inline-error">{error}</div>}
       </div>
       <footer className="modal-footer">
-        <button className="button secondary" onClick={onClose}>
+        <button className="button secondary" disabled={busy} onClick={onClose}>
           Close
         </button>
         {current.status === "open" && (
@@ -1340,6 +1381,7 @@ export function AssistantDialog({ data, asOf, onClose }: Omit<Base, "onDone">) {
       <div className="modal-body">
         <div className="tabs">
           <button
+            disabled={busy}
             className={mode === "operations" ? "active" : ""}
             onClick={() => {
               setMode("operations");
@@ -1349,6 +1391,7 @@ export function AssistantDialog({ data, asOf, onClose }: Omit<Base, "onDone">) {
             Operational evidence
           </button>
           <button
+            disabled={busy}
             className={mode === "policy" ? "active" : ""}
             onClick={() => {
               setMode("policy");
@@ -1363,7 +1406,11 @@ export function AssistantDialog({ data, asOf, onClose }: Omit<Base, "onDone">) {
             Supply plan
             <select
               value={reference}
-              onChange={(e) => setReference(e.target.value)}
+              disabled={busy}
+              onChange={(e) => {
+                setReference(e.target.value);
+                setAnswer(null);
+              }}
             >
               <option value="">Select a recorded plan</option>
               {data.plans.map((p) => (
@@ -1383,7 +1430,11 @@ export function AssistantDialog({ data, asOf, onClose }: Omit<Base, "onDone">) {
           <textarea
             rows={2}
             value={question}
-            onChange={(e) => setQuestion(e.target.value)}
+            disabled={busy}
+            onChange={(e) => {
+              setQuestion(e.target.value);
+              setAnswer(null);
+            }}
           />
         </label>
         <button

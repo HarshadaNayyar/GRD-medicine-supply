@@ -21,6 +21,8 @@ export const dateLabel = (value: string | null | undefined, year = false) =>
         ...(year ? { year: "numeric" } : {}),
       })
     : "—";
+export const parseInstant = (value: string) =>
+  new Date(/(?:Z|[+-]\d{2}:\d{2})$/i.test(value) ? value : value + "Z");
 export const daysBetween = (a: string, b: string) =>
   Math.round(
     (new Date(b.slice(0, 10) + "T12:00:00").getTime() -
@@ -67,7 +69,7 @@ export function exportCsv(filename: string, rows: Record<string, unknown>[]) {
   const escape = (x: unknown) =>
     '"' +
     String(x ?? "")
-      .replace(/^[=+@-]/, "'$&")
+      .replace(/^[\s]*[=+@-]/, "'$&")
       .replaceAll('"', '""') +
     '"';
   const blob = new Blob(

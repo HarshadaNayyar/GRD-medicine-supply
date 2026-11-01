@@ -49,28 +49,32 @@ export function Modal({
   children,
   onClose,
   wide = false,
+  busy = false,
 }: {
   title: string;
   eyebrow?: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  busy?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
     const node = ref.current;
     const focusable = () =>
       Array.from(
         node?.querySelectorAll<HTMLElement>(
-          "button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea,a[href]",
+          "button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href]",
         ) || [],
       );
     focusable()[0]?.focus();
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeRef.current();
+      if (e.key === "Escape" && !busyRef.current) closeRef.current();
       if (e.key === "Tab") {
         const list = focusable();
         const first = list[0],
@@ -97,7 +101,7 @@ export function Modal({
     <div
       className="modal-backdrop"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !busy) onClose();
       }}
     >
       <div
@@ -115,6 +119,7 @@ export function Modal({
           <button
             className="icon-button"
             aria-label="Close dialog"
+            disabled={busy}
             onClick={onClose}
           >
             <X size={20} />

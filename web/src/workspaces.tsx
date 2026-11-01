@@ -39,6 +39,7 @@ import { all, api, command, upload } from "./api";
 import type { Batch, Data, Job, Metrics } from "./types";
 import {
   dateLabel,
+  parseInstant,
   daysBetween,
   exportCsv,
   hasRole,
@@ -334,8 +335,13 @@ export function ForecastWorkspace({
     .find((j) => j.kind === "simulation" && j.status === "completed");
   const running = jobs.some((j) => ["queued", "running"].includes(j.status));
   const latest = [...jobs].reverse()[0];
+  const datasetsVersion = data.datasets
+    .map((d) => d.id + ":" + d.digest)
+    .join(",");
   useEffect(() => {
     let cancelled = false;
+    setHistory([]);
+    setError("");
     setLoading(true);
     if (!productId || !locId) {
       setLoading(false);
@@ -356,7 +362,7 @@ export function ForecastWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [productId, locId]);
+  }, [productId, locId, datasetsVersion]);
   const chart = useMemo(() => {
     const past = weeklyHistory(history, asOf);
     const future =
@@ -551,7 +557,11 @@ export function ForecastWorkspace({
                     : title(method)
                   : "Not evaluated"}
               </strong>
-              <span>Chosen using validation results</span>
+              <span>
+                {forecastJob?.result.selection?.includes("fallback")
+                  ? "Short-history fallback; evaluation unavailable"
+                  : "Chosen using validation results"}
+              </span>
             </div>
             <div className="evidence-stat">
               <small>TEST ERROR · WAPE</small>
@@ -746,7 +756,8 @@ export function ForecastWorkspace({
                         )}
                       </span>
                       <strong>
-                        {number(score.wape_pct, 1)}% <small>WAPE</small>
+                        {number(score.wape_pct, 1)}
+                        {score.wape_pct != null ? "%" : ""} <small>WAPE</small>
                       </strong>
                     </div>
                   ))}
@@ -1181,6 +1192,7 @@ function ImportDialog({
   return (
     <Modal
       title="Import with a clear source"
+      busy={busy}
       eyebrow="DEMAND DATA"
       onClose={onClose}
       wide
@@ -1198,6 +1210,7 @@ function ImportDialog({
             Review and repair errors before committing any observations.
           </span>
           <input
+            disabled={busy}
             aria-label="Demand data file"
             type="file"
             accept=".csv,.xlsx"
@@ -1211,6 +1224,7 @@ function ImportDialog({
           <label>
             Dataset name
             <input
+              disabled={busy}
               value={name}
               onChange={(e) => change(setName, e.target.value)}
             />
@@ -1218,6 +1232,7 @@ function ImportDialog({
           <label>
             Source / reference
             <input
+              disabled={busy}
               value={source}
               onChange={(e) => change(setSource, e.target.value)}
             />
@@ -1225,6 +1240,7 @@ function ImportDialog({
           <label>
             Licence / permission
             <input
+              disabled={busy}
               value={licence}
               onChange={(e) => change(setLicence, e.target.value)}
             />
@@ -1232,6 +1248,7 @@ function ImportDialog({
           <label>
             Actual geography
             <input
+              disabled={busy}
               value={geography}
               onChange={(e) => change(setGeography, e.target.value)}
             />
@@ -1239,6 +1256,7 @@ function ImportDialog({
           <label>
             Evidence type
             <select
+              disabled={busy}
               value={evidence}
               onChange={(e) => change(setEvidence, e.target.value)}
             >
@@ -1250,6 +1268,7 @@ function ImportDialog({
           <label>
             Limitations
             <input
+              disabled={busy}
               value={limitations}
               onChange={(e) => change(setLimitations, e.target.value)}
             />
@@ -1282,7 +1301,7 @@ function ImportDialog({
         {error && <div className="inline-error">{error}</div>}
       </div>
       <footer className="modal-footer">
-        <button className="button secondary" onClick={onClose}>
+        <button className="button secondary" disabled={busy} onClick={onClose}>
           Close
         </button>
         <button
@@ -1372,7 +1391,7 @@ export function ActivityWorkspace({ data }: { data: Data }) {
                 <div>
                   <strong>{title(event.action.replaceAll(".", " "))}</strong>
                   <time>
-                    {new Date(event.created_at).toLocaleString("en-IN", {
+                    {parseInstant(event.created_at).toLocaleString("en-IN", {
                       day: "numeric",
                       month: "short",
                       hour: "2-digit",

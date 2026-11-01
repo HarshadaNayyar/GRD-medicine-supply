@@ -10,7 +10,7 @@ ROLES = {"admin", "manager", "planner", "operator", "steward", "viewer"}
 
 def secret():
     key = os.environ.get("GRD_TOKEN_SECRET", "")
-    if len(key) < 32:
+    if len(key) < 32 or key == "replace-with-at-least-32-random-characters":
         raise RuntimeError("Set GRD_TOKEN_SECRET to at least 32 random characters")
     return key
 

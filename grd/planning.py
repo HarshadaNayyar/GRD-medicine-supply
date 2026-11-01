@@ -22,6 +22,7 @@ def network_view(s, user, org, product_id, as_of, horizon):
             if (
                 job.payload.get("location_id") == loc.id
                 and job.payload.get("product_id") == product_id
+                and job.payload.get("measure", "requested") == measure
                 and job.result.get("status") == "ready"
                 and 0 <= (as_of - __import__("datetime").date.fromisoformat(job.payload["as_of"])).days <= 7
             ):
@@ -99,9 +100,7 @@ def network_view(s, user, org, product_id, as_of, horizon):
                     shortage = str(day)
         updated = pos["updated_at"]
         age = (
-            (datetime.now(timezone.utc) - updated.replace(tzinfo=timezone.utc)).total_seconds() / 3600
-            if updated
-            else None
+            (datetime.now(timezone.utc) - d.utc_datetime(updated)).total_seconds() / 3600 if updated else None
         )
         props = {
             "location_id": loc.id,

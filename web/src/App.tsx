@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { buildActions, type Action } from "./actions";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   ArrowDownToLine,
@@ -29,7 +30,15 @@ import {
   Truck,
   X,
 } from "lucide-react";
-import { api, command, loadData, localDemo, setToken } from "./api";
+import {
+  api,
+  command,
+  loadData,
+  localDemo,
+  setToken,
+  getSessionVersion,
+  SessionChangedError,
+} from "./api";
 import type {
   Batch,
   Case,
@@ -115,11 +124,34 @@ export default function App() {
     [tick, setTick] = useState(0),
     [mobileMenu, setMobileMenu] = useState(false),
     [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const refreshSequence = useRef(0);
+  const resetWorkspace = useCallback(() => {
+    refreshSequence.current++;
+    setData(null);
+    setNetwork(null);
+    setDialog(null);
+    setProductId("");
+    setSelected("");
+    setSearch("");
+    setScope("all");
+    setView("overview");
+    setToast("");
+    setError("");
+    setMobileMenu(false);
+    setLastRefresh(null);
+    setRefreshing(false);
+    setBusy(false);
+  }, []);
   const notify = useCallback((value: string) => setToast(value), []);
   const reload = useCallback(async () => {
+    const sequence = ++refreshSequence.current;
+    const version = getSessionVersion();
+    const current = () =>
+      sequence === refreshSequence.current && version === getSessionVersion();
     setRefreshing(true);
     try {
       const next = await loadData();
+      if (!current()) return;
       setData(next);
       setProductId(
         (x) =>
@@ -139,15 +171,20 @@ export default function App() {
       setLastRefresh(new Date());
       setTick((x) => x + 1);
     } catch (e) {
-      setError((e as Error).message);
+      if (current() && !(e instanceof SessionChangedError))
+        setError((e as Error).message);
     } finally {
-      setRefreshing(false);
-      setBusy(false);
+      if (current()) {
+        setRefreshing(false);
+        setBusy(false);
+      }
     }
   }, []);
   const finish = useCallback(
     async (message: string) => {
+      const version = getSessionVersion();
       await reload();
+      if (version !== getSessionVersion()) throw new SessionChangedError();
       notify(message);
     },
     [reload, notify],
@@ -160,15 +197,9 @@ export default function App() {
       });
       demoAttempt.then(reload).catch(() => setBusy(false));
     } else setBusy(false);
-    const clear = () => {
-      setData(null);
-      setNetwork(null);
-      setDialog(null);
-      setBusy(false);
-    };
-    window.addEventListener("grd:unauthorised", clear);
-    return () => window.removeEventListener("grd:unauthorised", clear);
-  }, [reload]);
+    window.addEventListener("grd:unauthorised", resetWorkspace);
+    return () => window.removeEventListener("grd:unauthorised", resetWorkspace);
+  }, [reload, resetWorkspace]);
   const asOf =
     data?.me.scenario_on ||
     new Intl.DateTimeFormat("en-CA", {
@@ -252,15 +283,11 @@ export default function App() {
     [data, currentNetwork, rows, asOf],
   );
   async function logout() {
-    try {
-      await api("/auth/logout", "POST");
-    } finally {
-      setToken(null);
-      setData(null);
-      setNetwork(null);
-      setDialog(null);
-      demoAttempt = undefined;
-    }
+    const revocation = api("/auth/logout", "POST").catch(() => undefined);
+    setToken(null);
+    resetWorkspace();
+    demoAttempt = undefined;
+    await revocation;
   }
   if (busy && !data)
     return (
@@ -269,7 +296,7 @@ export default function App() {
         <Loading label="Connecting your supply network" />
       </div>
     );
-  if (!data) return <Login onReady={reload} />;
+  if (!data) return <Login onReady={reload} connectionError={error} />;
   const openRisk = (row: NetworkRow) => {
     setSelected(row.location_id);
     setDialog({ type: "resolve", locationId: row.location_id });
@@ -499,7 +526,7 @@ export default function App() {
                   value={
                     <>
                       {number(
-                        currentNetwork
+                        currentNetwork && rows.some((r) => r.balance.known)
                           ? rows
                               .filter((r) => r.balance.known)
                               .reduce((n, r) => n + r.balance.available, 0)
@@ -528,7 +555,8 @@ export default function App() {
                   value={
                     <>
                       {number(
-                        currentNetwork
+                        currentNetwork &&
+                          !rows.some((r) => r.status === "unknown")
                           ? rows.reduce(
                               (n, r) => n + r.projected_expiry_units,
                               0,
@@ -538,7 +566,11 @@ export default function App() {
                       <em>units</em>
                     </>
                   }
-                  detail={`Projected unconsumed · ${horizon} days`}
+                  detail={
+                    rows.some((r) => r.status === "unknown")
+                      ? "Stock or demand coverage is incomplete"
+                      : `Projected unconsumed · ${horizon} days`
+                  }
                   icon={<Clock3 size={19} />}
                   tone="amber"
                 />
@@ -732,7 +764,9 @@ export default function App() {
                     </span>
                     <span>
                       <Database size={15} />
-                      Synthetic operating data · approximate demo sites
+                      {data.me.evidence_type === "synthetic"
+                        ? "Synthetic operating data · approximate demo sites"
+                        : "Declared operating data · see provenance"}
                     </span>
                     <button onClick={() => navigate("sources")}>
                       See data provenance <ExternalLink size={13} />
@@ -926,7 +960,13 @@ function Brand() {
     </div>
   );
 }
-function Login({ onReady }: { onReady: () => Promise<void> }) {
+function Login({
+  onReady,
+  connectionError,
+}: {
+  onReady: () => Promise<void>;
+  connectionError: string;
+}) {
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [error, setError] = useState(""),
@@ -1020,9 +1060,9 @@ function Login({ onReady }: { onReady: () => Promise<void> }) {
                 placeholder="Enter your password"
               />
             </label>
-            {error && (
+            {(error || connectionError) && (
               <div className="inline-error" role="alert">
-                {error}
+                {error || connectionError}
               </div>
             )}
             <button className="button primary large" disabled={busy}>
@@ -1059,137 +1099,16 @@ function Login({ onReady }: { onReady: () => Promise<void> }) {
   );
 }
 
-interface Action {
-  id: string;
-  kind: "risk" | "expiry" | "plan" | "request" | "case";
-  ref: string;
-  title: string;
-  description: string;
-  location: string;
-  product: string;
-  severity: string;
-  label: string;
-  metric: string;
-}
-function buildActions(
-  data: Data,
-  network: Network | null,
-  asOf: string,
-): Action[] {
-  const loc = (id: string) =>
-      shortLocation(
-        data.locations.find((x) => x.id === id)?.name || "Location",
-      ),
-    prod = (id: string) =>
-      shortProduct(data.products.find((x) => x.id === id)?.name || "Medicine");
-  const items: Action[] = [];
-  for (const row of network?.table || []) {
-    if (row.shortage_date)
-      items.push({
-        id: "risk-" + row.location_id,
-        kind: "risk",
-        ref: row.location_id,
-        title: `${loc(row.location_id)} needs replenishment`,
-        description: `Projected shortage on ${dateLabel(row.shortage_date)}. Review an eligible source before it happens.`,
-        location: loc(row.location_id),
-        product: prod(row.product_id),
-        severity: riskLevel(row, asOf) === "critical" ? "critical" : "warning",
-        label: riskLevel(row, asOf) === "critical" ? "Critical" : "At risk",
-        metric: `${number(row.days_of_cover, 1)} days nominal cover`,
-      });
-    if (row.projected_expiry_units > 0)
-      items.push({
-        id: "expiry-" + row.location_id,
-        kind: "expiry",
-        ref: row.location_id,
-        title: `Expiry exposure in ${loc(row.location_id)}`,
-        description: `${number(row.projected_expiry_units)} units may remain unused within the planning horizon.`,
-        location: loc(row.location_id),
-        product: prod(row.product_id),
-        severity: "warning",
-        label: "Expiry risk",
-        metric: "Review stock",
-      });
-  }
-  for (const p of data.plans.filter((x) =>
-    ["proposed", "approved", "partial", "dispatched"].includes(x.status),
-  ))
-    items.push({
-      id: p.id,
-      kind: "plan",
-      ref: p.id,
-      title:
-        p.status === "proposed"
-          ? "A supply plan is ready for review"
-          : p.status === "approved"
-            ? "Approved stock is ready to dispatch"
-            : "Shipment execution in progress",
-      description: `${number(p.quantity)} units · ${loc(p.source_id)} → ${loc(p.destination_id)}`,
-      location: loc(p.destination_id),
-      product: prod(p.product_id),
-      severity: "neutral",
-      label: title(p.status),
-      metric: "View plan",
-    });
-  for (const r of data.requests.filter(
-    (x) =>
-      x.quantity > x.fulfilled + x.cancelled &&
-      !data.plans.some(
-        (p) =>
-          p.request_id === x.id &&
-          ["proposed", "approved", "partial", "dispatched"].includes(p.status),
-      ),
-  ))
-    items.push({
-      id: r.id,
-      kind: "request",
-      ref: r.id,
-      title: `Open request from ${loc(r.destination_id)}`,
-      description: `${number(r.quantity - r.fulfilled - r.cancelled)} units remain unfulfilled. Needed by ${dateLabel(r.needed_by)}.`,
-      location: loc(r.destination_id),
-      product: prod(r.product_id),
-      severity: "neutral",
-      label: "Request",
-      metric: "Review request",
-    });
-  for (const c of data.cases.filter((x) => x.status === "open"))
-    items.push({
-      id: c.id,
-      kind: "case",
-      ref: c.id,
-      title: title(c.kind),
-      description: `${loc(c.location_id)} · Review the discrepancy and record its resolution.`,
-      location: loc(c.location_id),
-      product: "Stock integrity",
-      severity: "warning",
-      label: "Needs review",
-      metric: "Open case",
-    });
-  return items.sort((a, b) => {
-    const priority: Record<string, number> = {
-      critical: 0,
-      warning: 1,
-      neutral: 2,
-    };
-    const severity = (priority[a.severity] ?? 3) - (priority[b.severity] ?? 3);
-    if (severity) return severity;
-    const dateFor = (x: Action) =>
-      x.kind === "risk"
-        ? network?.table.find((r) => r.location_id === x.ref)?.shortage_date ||
-          "9999"
-        : x.kind === "request"
-          ? data.requests.find((r) => r.id === x.ref)?.needed_by || "9999"
-          : "9999";
-    return dateFor(a).localeCompare(dateFor(b));
-  });
-}
 function handleAction(
   item: Action,
   data: Data,
   setDialog: (x: Dialog) => void,
   setSelected: (x: string) => void,
 ) {
-  if (item.kind === "plan") {
+  if (item.kind === "data") {
+    setSelected(item.ref);
+    setDialog({ type: "location", locationId: item.ref });
+  } else if (item.kind === "plan") {
     const plan = data.plans.find((x) => x.id === item.ref);
     if (plan) setDialog({ type: "plan", plan });
   } else if (item.kind === "case") {
@@ -1263,7 +1182,8 @@ function LocationStrip({
       <div>
         <small>AVAILABLE</small>
         <strong>
-          {number(row.balance.available)} <em>{product.base_unit}s</em>
+          {row.balance.known ? number(row.balance.available) : "Unknown"}{" "}
+          <em>{row.balance.known && product.base_unit + "s"}</em>
         </strong>
       </div>
       <div>

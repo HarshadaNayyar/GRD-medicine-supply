@@ -90,6 +90,59 @@ const data: Data = {
 beforeEach(() => vi.resetAllMocks());
 afterEach(cleanup);
 
+it("blocks proposal creation while a changed quantity is being checked, including failed lookups", async () => {
+  vi.mocked(api)
+    .mockResolvedValueOnce({
+      options: [{ source_id: "source", feasible: true, evidence: explanation }],
+    })
+    .mockRejectedValueOnce(new Error("Supply lookup unavailable"));
+  render(
+    <ResolveDialog
+      data={data}
+      product={product}
+      locationId="dest"
+      asOf="2026-11-01"
+      onClose={() => {}}
+      onDone={async () => {}}
+    />,
+  );
+  const button = screen.getByRole("button", { name: "Create plan for review" });
+  await waitFor(() => expect(button.hasAttribute("disabled")).toBe(false));
+  fireEvent.change(screen.getByLabelText("Plan quantity"), {
+    target: { value: 70 },
+  });
+  expect(button.hasAttribute("disabled")).toBe(true);
+  await screen.findByText("Supply lookup unavailable");
+  expect(button.hasAttribute("disabled")).toBe(true);
+  expect(command).not.toHaveBeenCalled();
+});
+
+it("withholds approval and cancellation from a manager who can only access the destination", () => {
+  const scoped = {
+    ...data,
+    me: { ...data.me, role: "manager", location_ids: ["dest"] },
+  };
+  render(
+    <PlanDialog
+      data={scoped}
+      plan={plan}
+      asOf="2026-11-01"
+      onClose={() => {}}
+      onDone={async () => {}}
+      onReceipt={() => {}}
+    />,
+  );
+  expect(
+    screen.queryByRole("button", { name: "Approve & reserve" }),
+  ).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "Cancel unshipped plan" }),
+  ).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "Revalidate proposal" }),
+  ).toBeNull();
+});
+
 it("preserves a created request when proposal creation fails and is retried", async () => {
   vi.mocked(api).mockResolvedValue({
     options: [{ source_id: "source", feasible: true, evidence: explanation }],

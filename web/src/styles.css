@@ -1026,7 +1026,7 @@ strong {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
-  color: #7d916b;
+  color: #5b6e55;
 }
 .horizon-control > input {
   width: 105px;
@@ -1434,10 +1434,10 @@ strong {
   color: #bb7c62 !important;
 }
 .text-amber {
-  color: #ad9150 !important;
+  color: #7e5d1d !important;
 }
 .text-green {
-  color: #548854 !important;
+  color: #356640 !important;
 }
 .error-banner {
   display: flex;
@@ -4478,4 +4478,131 @@ strong {
   line-height: 1.8;
   color: #617168;
   margin: 20px 0;
+}
+
+/* Audited text palette: retain semantic hues with readable foregrounds. */
+.breadcrumb,
+.header-date,
+.workspace .eyebrow,
+.modal .eyebrow,
+.product-select small,
+.tiny-count,
+.segmented button,
+.action-card-top > span:last-child:not(.badge),
+.action-card-bottom,
+.attention-footer > span,
+.workspace-footer,
+.trust-strip,
+.method-list small,
+.chart-legend,
+.timeline-tags,
+.shipment-card p,
+.shipment-card .mono,
+.dataset-main small,
+.dataset-limitations,
+.source-principles p,
+.chart-caption,
+.chart-legend span,
+.map-legend,
+.state-label,
+.map-footnote,
+.leaflet-control-zoom a {
+  color: #5f705f;
+}
+.badge,
+.badge.neutral,
+.badge.unknown {
+  color: #58694f;
+}
+.badge.green,
+.badge.healthy {
+  color: #3e6b32;
+}
+.badge.critical {
+  color: #94492d;
+}
+.badge.warning,
+.badge.demo {
+  color: #7f601f;
+}
+.badge.blue {
+  color: #4d648b;
+}
+.login-form > p,
+.login-form label,
+.login-note,
+.login-divider {
+  color: #60724f;
+}
+.login-form input {
+  color: #304a32;
+}
+.login-form input::placeholder {
+  color: #6c7b62;
+}
+.login-footer,
+.art-label {
+  color: #a6bf91;
+}
+.sidebar .workspace-label {
+  color: #a4b99f;
+}
+.modal .batch-summary,
+.modal .shipment-trail small,
+.modal .facts-list,
+.modal .citation,
+.modal .comment,
+.modal .plan-route > div > small,
+.modal .medicine-callout > div > span,
+.modal .journey-track > div,
+.modal .subsection-heading > span,
+.modal .receipt-destination small {
+  color: #5d705a;
+}
+.source-options .source-estimate span,
+.form-grid label,
+.full-label {
+  color: #586b56;
+}
+
+.upload-zone:focus-within {
+  outline: 3px solid #8eba75;
+  outline-offset: 3px;
+}
+
+.tabs button,
+.horizon-control > span,
+.leaflet-control-zoom span,
+.row-action,
+.timeline-tags > span,
+.dataset-limitations > span {
+  color: #5b6e55;
+}
+.tabs button.active {
+  color: #365e35;
+}
+.evidence-stat > strong,
+.text-green {
+  color: #356640;
+}
+.text-amber {
+  color: #7e5d1d;
+}
+.text-coral {
+  color: #94492d;
+}
+.source-principles h3,
+.dataset-main h3,
+.source-context h3,
+.timeline-content strong {
+  color: #3f613d;
+}
+.workspace .notice p {
+  color: #5d705a;
+}
+.recharts-wrapper text {
+  fill: #5f705f;
+}
+.inline-error {
+  color: #8f3d2c;
 }

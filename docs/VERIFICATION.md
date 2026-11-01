@@ -1,5 +1,7 @@
 # Verification record — 1 November 2026
 
+A later [complete local product audit](AUDIT_2026-11-01.md) includes the website, additional fixes and expanded test counts. The original backend handover record below is retained as historical evidence.
+
 Base repository revision: `7857effb4023112e4b361baa9bc0601b1b39a95a`. Work is on local branch `codex/grd-backend` in a separate working copy. This record distinguishes executed checks from supplied deployment/configuration files.
 
 ## Executed
