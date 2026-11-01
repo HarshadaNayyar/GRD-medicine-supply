@@ -6,3 +6,7 @@ outputs
 *.db*
 __pycache__
 tests
+web/node_modules
+web/dist
+web/test-results
+web/*.tsbuildinfo

@@ -14,3 +14,10 @@ __pycache__/
 .ruff_cache/
 .env.*
 !.env.example
+
+# Web build and local tooling
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo
+web/test-results/
+web/playwright-report/

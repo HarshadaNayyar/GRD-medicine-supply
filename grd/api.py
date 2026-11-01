@@ -1176,4 +1176,7 @@ def create_app(database_url=None):
             "offline_rule": "Commands remain provisional until accepted; replay their persisted Idempotency-Key; HTTP409 requires reconciliation",
         }
 
+    from .web import mount_workspace
+
+    mount_workspace(app)
     return app

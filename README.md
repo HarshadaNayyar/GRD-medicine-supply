@@ -2,7 +2,7 @@
 
 Shared backend for the NESFIC-I-09 medicine supply project: desktop web and React Native Android/iOS clients use one authenticated API and transactional inventory ledger.
 
-**Status:** runnable local integration backend with a labelled Assam synthetic scenario. This is not a measured GRD deployment or the complete web/mobile product. See [PRD status](docs/PRD_STATUS.md) for implemented capabilities and remaining activation gates.
+**Status:** runnable backend and polished React web workspace with a labelled Assam synthetic scenario. The website includes the map, action centre and approval-to-receipt workflow. Native Android/iOS clients and a measured GRD pilot remain separate work. See [PRD status](docs/PRD_STATUS.md) for implemented capabilities and remaining activation gates.
 
 ## Run locally
 
@@ -34,6 +34,24 @@ grd worker
 
 The API queues forecasts and simulations durably; the worker processes them. `grd worker-once` is useful for a single experiment. Local demo stock is fixed to its declared scenario date; use horizon controls for projections instead of mixing physical balances from different dates.
 
+## Website
+
+Use Node 24+ from this repository directory:
+
+```sh
+cd web
+npm ci
+npm run build
+cd ..
+grd serve
+```
+
+Open **http://127.0.0.1:8011/**. Sign in with `demo@grd.local` (or your seeded email) and the password you configured in `.env`. Start `grd worker` separately for forecast and simulation jobs. The compiled website and API share the same address; restart an already-running API once after the first web build.
+
+For frontend development, keep the backend/worker running and run `npm run dev` inside `web`. **http://127.0.0.1:5173/** proxies the actual API and supports a local synthetic demo login. That helper reads `.env` on the development server only, requires loopback access and the exact local Origin, and refuses non-synthetic organisations. It is absent from the production build. Tokens live in browser memory; refreshing the production page requires sign-in again.
+
+Read [the website walkthrough](docs/WEB_DEMO.md) for the demo sequence, limitations and checks.
+
 ## What is implemented
 
 - PostgreSQL/SQLite schema and versioned Alembic migrations.
@@ -50,7 +68,7 @@ The API queues forecasts and simulations durably; the worker processes them. `gr
 - Two grounded, non-mutating assistant modes: recorded plan facts and approved policy excerpts.
 - Durable job status/cancel/recovery, health endpoints, container definitions, CI and a shared TypeScript client transport.
 
-These are API capabilities. The actual website and native app, device testing, push-provider integration and company-data activation are not included in this backend handover.
+The React website exercises the shared API: network map/layers, medicine/location/horizon filters, stock evidence, source comparison, versioned approval, partial dispatch/receipt, damage cases, batch control, forecast evaluation, policy experiments, grounded assistance, imports and an audit timeline. Native apps, device testing, push delivery and company-data activation remain outstanding.
 
 ## Recommended demo
 
