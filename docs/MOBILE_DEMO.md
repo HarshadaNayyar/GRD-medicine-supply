@@ -1,6 +1,22 @@
 # GRD Supply mobile
 
-The Expo / React Native client is in `mobile`, using SDK 58 / React Native 0.88. It uses native components and Expo Router, not an embedded website. It shares product types, display helpers and the action ranking with the website. Android and iOS use the same authenticated FastAPI backend.
+The Expo / React Native client is in `mobile`, using SDK 58 / React Native 0.88. It uses native components and Expo Router, not an embedded website. It shares product types, display helpers and the action ranking with the website. Android connects to the same authenticated FastAPI backend as the website, at **https://grd-supply-demo.onrender.com**. The iOS native build is skipped; cross-platform source is retained.
+
+## Hosted Android demo
+
+The hosted APK is `outputs/mobile-demo/GRD-Supply-Android.apk`, version **1.1.0 / code 2**, ARM64. The public HTTPS origin is compiled into the app using `EXPO_PUBLIC_GRD_API_URL`; cleartext traffic is disabled. The cloud login is independent of the older local demo login and is saved privately in `outputs/deployment-setup/demo-login.txt`. No login password, database URL or signing secret is packaged in the app. This APK uses the generated demo signing key and is intended for direct demonstration installs, not Play Store publication.
+
+A fresh install defaults to the hosted origin. Existing installations retain their saved server and scoped pending commands: change **Server connection** deliberately, resolving any pending commands first. Do not replay a local outbox into the hosted organisation. Render Free sleeps when idle and its worker sleeps too; open the website about a minute before the demo.
+
+For a reproducible hosted build, use Node 24 and Android SDK/JDK, then from `mobile`:
+
+```sh
+GRD_ALLOW_LOCAL_HTTP=0 npx expo prebuild --platform android --no-install
+cd android
+EXPO_PUBLIC_GRD_API_URL=https://grd-supply-demo.onrender.com ./gradlew app:assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers 4
+```
+
+The EAS `preview` profile also specifies this public origin and disables cleartext traffic; no EAS cloud build or paid account was needed for the delivered local build. `mobile/.env.example` contains only public configuration.
 
 ## Included workflows
 
@@ -43,9 +59,9 @@ Full network/stock snapshots are kept in memory, not persisted on the device. A 
 
 Executed: 10 mobile command/transport tests, TypeScript, Expo lint, Expo Doctor (20/20), Android/iOS/web JavaScript production exports, mobile browser preview against the real local backend. The browser checks covered login, medicine selection, map, a critical Silchar location and eligible/blocked replenishment explanations. The backend suite passes 58 tests on SQLite (one PostgreSQL-only skip) and all 59 on PostgreSQL 16; 18 website tests and its production build pass.
 
-The cloud launcher was exercised locally on a disposable PostgreSQL database: migrations, new synthetic seed, a completed forecast through the supervised worker, restart persistence, login continuity and stock reconciliation passed. This is not a claim of a public deployment or a completed Render container build.
+The cloud launcher was exercised locally on disposable PostgreSQL, then deployed successfully on Render Free with Neon Free PostgreSQL 16. Public verification passed readiness, authenticated login, the website map/action centre, hosted forecast and simulation workers, idempotent submission, approval/dispatch/partial receipt/quarantine and ledger reconciliation. Stock, completed jobs and login continuity survived a Render service restart. These are synthetic demo checks, not measured GRD outcomes.
 
-Native Android release build passed (ARM64, approximately 39 MB). The APK signature was verified, latest command/count/receipt code was checked inside the packaged bundle, and the APK was installed/launched on the API 36 ARM64 emulator. The local file is `outputs/mobile-demo/GRD-Supply-Android-demo.apk`; `build.json` beside it records its SHA-256 and size. This is a local HTTP-enabled demonstration build using the generated debug signing configuration, not a store-signed production release. Interactive native permission/offline/device workflows have not been exercised; the connected UI journey was verified in the React Native browser preview. **iOS native build is skipped at the user’s request.** Cross-platform source is retained; no iOS installation or distribution is part of the current demo handoff. Push delivery, automatic background synchronisation, GPS vehicle tracking, full offline cold-start access and app-store publication are not implemented. All existing synthetic-data limitations remain visible in the mobile app.
+The earlier local HTTP-enabled APK remains `outputs/mobile-demo/GRD-Supply-Android-demo.apk`; use the new hosted APK above for internet access. Interactive native permission/offline/device workflows have not been exercised; the connected UI journey was verified in the React Native browser preview. **iOS native build is skipped at the user’s request.** No iOS installation or distribution is part of the current demo handoff. Push delivery, automatic background synchronisation, GPS vehicle tracking, full offline cold-start access and app-store publication are not implemented. All existing synthetic-data limitations remain visible in the mobile app.
 
 The Expo starter licence is retained as `mobile/EXPO_TEMPLATE_LICENSE`; it does not choose a licence for the whole repository.
 

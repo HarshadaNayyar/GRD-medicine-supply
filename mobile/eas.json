@@ -9,7 +9,8 @@
         "buildType": "apk"
       },
       "env": {
-        "GRD_ALLOW_LOCAL_HTTP": "0"
+        "GRD_ALLOW_LOCAL_HTTP": "0",
+        "EXPO_PUBLIC_GRD_API_URL": "https://grd-supply-demo.onrender.com"
       }
     },
     "ios-simulator": {

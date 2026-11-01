@@ -2,7 +2,7 @@
 
 Shared backend for the NESFIC-I-09 medicine supply project: desktop web and React Native Android/iOS clients use one authenticated API and transactional inventory ledger.
 
-**Status:** runnable backend and polished React web workspace with a labelled Assam synthetic scenario. The website includes the map, action centre and approval-to-receipt workflow. Native Android/iOS clients and a measured GRD pilot remain separate work. See [PRD status](docs/PRD_STATUS.md) for implemented capabilities and remaining activation gates.
+**Live synthetic demo:** [GRD Supply Intelligence](https://grd-supply-demo.onrender.com). The polished React website, authenticated backend and forecasting worker run on Render Free with persistent Neon Free PostgreSQL. The Android client connects to the same HTTPS origin; the iOS native build is skipped. Free hosting sleeps when idle, so open it about a minute before a demonstration. See [hosting](docs/FREE_DEPLOYMENT.md), [mobile handoff](docs/MOBILE_DEMO.md) and [PRD status](docs/PRD_STATUS.md). Real company-data activation and a measured GRD pilot remain outstanding.
 
 ## Run locally
 
@@ -70,7 +70,7 @@ Read [the website walkthrough](docs/WEB_DEMO.md) for the demo sequence, limitati
 - Two grounded, non-mutating assistant modes: recorded plan facts and approved policy excerpts.
 - Durable job status/cancel/recovery, health endpoints, container definitions, CI and a shared TypeScript client transport.
 
-The React website exercises the shared API: network map/layers, medicine/location/horizon filters, stock evidence, source comparison, versioned approval, partial dispatch/receipt, damage cases, batch control, forecast evaluation, policy experiments, grounded assistance, imports and an audit timeline. Native apps, device testing, push delivery and company-data activation remain outstanding.
+The React website exercises the shared API: network map/layers, medicine/location/horizon filters, stock evidence, source comparison, versioned approval, partial dispatch/receipt, damage cases, batch control, forecast evaluation, policy experiments, grounded assistance, imports and an audit timeline. The React Native Android app shares this backend. Broader device testing, push delivery and company-data activation remain outstanding.
 
 ## Recommended demo
 
