@@ -1,25 +1,30 @@
 # PRD traceability and activation gates
 
-**2 November operations upgrade:** See [the implementation and release checklist](UPGRADE_IMPLEMENTATION.md). The twelve research recommendations now have integrated implementations. The table below describes the earlier baseline; the upgrade adds supplier orders, staged return transport, count/recount worklists, shipment proof/QR/documents, a durable exception inbox, saved map-linked comparisons/disruptions, a public-data benchmark, availability-supported demand quality and encrypted cached Android records with a 100-command outbox. Real provider integrations, continuous push and device/pilot acceptance remain separate gates.
+Updated 2 November 2026 after the integrated operations upgrade. The twelve research
+recommendations now have working shared-backend implementations; see
+[the release checklist and limitations](UPGRADE_IMPLEMENTATION.md). The full original
+final-product PRD still includes company-data, provider and field/pilot acceptance
+gates. iOS native delivery remains excluded by the user's later instruction.
 
-Reference: final product PRD v1.0, 23 October 2026. The core synthetic demonstration is hosted, but the full original PRD is not complete. See [the feature guide and all 53 numbered requirement assessments](FEATURES_AND_PRD_REVIEW.md). The later user instruction explicitly excludes the iOS native build from this release.
-
-| Area | Implemented | Remaining activation/depth |
+| Area | Implemented | Remaining activation / acceptance |
 |---|---|---|
-| Data foundation | CSV/XLSX demand preview, row errors, atomic imports, duplicate prevention, source metadata, integer units and exact pack conversions | Approved GRD schema and unit mapping; automated ERP feeds; versioned correction/replacement UI |
-| Forecasting | Baselines including intermittent demand, initial ML candidate, validation selection, separated final targets, recursive 1–4 week evaluation, residual intervals and measured coverage, short-history/stale fallbacks | Local seasonal-signal ablation requires aligned local demand; broader backtesting/calibration; real demand-censoring inference |
-| Stock integrity | Transactional SQL, immutable movements, nonnegative stock, FEFO reservations, holds, explicit counts/adjustments/reversals, reconciliation, competing-approval tests | Operational user acceptance, retention rules and real source reconciliation |
-| Planning | Finite donor availability/protection, permissions, packs, arrival shelf life, costs/budgets, per-product destination capacity, rejected options, expiry rescue, recent published forecast integration | Multi-donor/global optimisation, configurable owner-approved priorities beyond the implemented earliest-due-date finite-stock allocation, real vendor reliability and approved commercial rules |
-| Execution | Requests, versioned proposals, scoped approvals, partial dispatch/receipt, damage quarantine, cancellation, return receipt pending disposition, audit | In-transit return transport workflow; external purchase-order acknowledgement and vendor integration; full recall-case management outside PRD boundary |
-| Map and web integration | React workspace with interactive Assam map, linked table, medicine/location/horizon/layer filters, stock evidence, action queue, plan/receipt controls, batch register, import preview, forecast/simulation charts, assistant and audit; keyboard focus and responsive browser QA; live authenticated Render demo | Full offline web operation, broader assistive-technology/user acceptance checks and production performance |
-| React Native | Expo SDK 58 client with five tabs, bundled vector map, shared action ranking, source comparison, scoped approval/dispatch/partial receipt, verified internal QR/manual lookup, count snapshot guard, native secure tokens and bounded persistent outbox, evidence/assistant/activity | Interactive native device QA (Android build/install/cold launch passed), signed pilot distribution, 50-event offline acceptance versus current 8-command limit, persisted operational records, background sync and push |
-| Collaboration | Cases, assignment, comments, due dates, resolution, scoped audit | Notification outbox/provider adapters, escalation scheduler and attachment storage |
-| Assistance | Two non-mutating grounded modes: recorded plan evidence and approved policy excerpts | Improved search/optional LLM answer synthesis, adversarial provider tests and owner-approved real policy corpus |
-| Evidence | Paired reproducible lane simulator, conservation checks, forecast job provenance and cut-offs | Network-wide policy replay, real pilot baseline/outcomes, expiry observation window and approved cost valuation |
-| Deployment | Live Render Free Singapore website/API/supervised worker with Neon Free PostgreSQL 16, private secrets, HTTPS readiness, hosted forecast/simulation completion and idempotent stock journey, verified service restart persistence; migrations and green CI | Sustained load/cold-start profiling, production monitoring/distributed rate limits, restore drill and operational incident plan; free sleeping service is a supervised demo |
+| Data foundation | Attributed demand imports, batches/units, immutable movements, reconciliation and dated availability evidence | Approved company schema/data, ERP feed and correction/replacement workflow |
+| Forecasting | Baselines + ML candidate, validation selection, separated final tests, uncertainty/coverage and a separate original public-data benchmark | Broader rolling evaluation/calibration and matched local-signal ablation |
+| Demand quality | Raw sales/requested preserved; observed availability/reporting supports an explicit lost-demand estimate and sensitivity | Actual stock-out/reporting exports; unsupported results stay unsupported |
+| Planning | Donor protection, FEFO, packs, shelf life, route/cost/capacity checks, earliest-due allocations and atomic split-source approvals | Global optimisation and approved real commercial rules |
+| Scenario evidence | Frozen no-action/source comparisons, donor/recipient timelines, saved disruption IDs and linked scenario map | Broader stochastic network replay and measured pilot outcomes |
+| Action timing | Latest safe action date with negative overdue slack, explicit delivery/buffer assumptions and durable exception escalation | Reliable always-on scheduling; Free service sleeps |
+| Supplier orders | Explained quantities, drafts, manager approval, manually recorded acknowledgement/promised date and partial accepted/damaged receipts | Real supplier API credentials, commercial approval and vendor reliability data |
+| Warehouse and delivery | Approved-version pick/packing documents, internal shipment QR, delivery note and receiver-confirmed proof with short/damaged lines | Physical camera/field acceptance and external courier integration |
+| Counts and returns | Assigned count/recount rounds with snapshot guards; staged return approval, dispatch, transit, receipt and disposition | Real operational user acceptance and company correction authority |
+| Collaboration | Persistent deduplicated inbox, ownership, due dates, acknowledgement, resolution and sync-conflict reporting | Android push credentials/provider delivery, protected attachments and production SLA |
+| Website | Polished map/actions plus Planning studio, Operations desk and evidence/stock-card workspaces | Broader assistive-technology and operational load acceptance |
+| Android | Shared operations, shipment QR/manual lookup, proof of delivery and encrypted cached authorised records with a 100-command outbox | Physical-device login/camera/offline acceptance and store/pilot signing/distribution |
+| Assistance | Read-only recorded-plan facts and cited approved policy excerpts | Owner-approved real policy corpus and optional improved retrieval/synthesis |
+| Hosting | Render Free + persistent Neon PostgreSQL, additive migration, restored backup drill, authenticated live checks and green CI | Always-on production hosting, monitoring, incident/retention policies and pilot acceptance |
 
-## Release discipline
-
-Do not present this as a finished industry deployment or the complete competition product. Run a supervised synthetic demo, finish native device validation/distribution and remaining acceptance evidence, then activate company data/policies in shadow mode before live stock decisions. A missing advantage over a simple baseline is reported honestly; the model is not chosen to satisfy a headline percentage.
-
-Immediate remaining work: real-phone acceptance, the offline storage/50-event requirement, push and escalation, separate return transport stages, local-signal evaluation and broader saved policy scenarios. Reconciliation cases, internal-label scanning, partial damaged receipts and rejected donor explanations already exist; they need depth/acceptance rather than being listed as wholly new features. See the detailed review for external supplier replenishment, configurable allocation priorities, broader data imports and pilot gates.
+Do not present synthetic demonstrations, public pharmacy benchmarks or deterministic
+scenario estimates as measured GRD business outcomes. No fixed accuracy or impact
+percentage is claimed. The original 53-requirement baseline review is retained in
+[FEATURES_AND_PRD_REVIEW.md](FEATURES_AND_PRD_REVIEW.md), with the upgrade as its explicit
+superseding implementation record.

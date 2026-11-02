@@ -414,6 +414,13 @@ export function EvidenceWorkspace({
                   "Milan Zdravkovic · Pharma Sales Data"}
               </strong>
               <p>{sourceInfo?.units}</p>
+              {typeof result?.date_start === "string" &&
+                typeof result?.date_end === "string" && (
+                  <p>
+                    Original observation period: {String(result.date_start)} to{" "}
+                    {String(result.date_end)}.
+                  </p>
+                )}
               <a
                 href={
                   sourceInfo?.source_url ||

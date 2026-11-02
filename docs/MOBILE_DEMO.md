@@ -1,6 +1,6 @@
 # GRD Supply mobile
 
-**2 November upgrade:** Android 1.2.0 / version code 3 targets the same hosted API. It adds shipment QR/delivery proof and an Operations desk for alerts, counts, suppliers and staged returns. Authorised records persist until session expiry, and the encrypted outbox now holds 100 commands (25 KB each). See [the upgrade release checklist](UPGRADE_IMPLEMENTATION.md) for current build/device evidence. Version 1.1.0 verification below is historical.
+**2 November upgrade:** Android 1.2.0 / version code 3 is built for the same hosted API. It adds shipment QR/delivery proof and an Operations desk for alerts, counts, suppliers and staged returns. Authorised records persist until session expiry, and the encrypted outbox now holds 100 commands (25 KB each). See [the upgrade release checklist](UPGRADE_IMPLEMENTATION.md) for current build/device evidence. Version 1.1.0 verification below is historical. The current package is `outputs/mobile-demo/GRD-Supply-Android.apk` (also retained as `GRD-Supply-Android-1.2.0.apk`). See the upgrade checklist for native acceptance limitations.
 
 The Expo / React Native client is in `mobile`, using SDK 58 / React Native 0.88. It uses native components and Expo Router, not an embedded website. It shares product types, display helpers and the action ranking with the website. Android connects to the same authenticated FastAPI backend as the website, at **https://grd-supply-demo.onrender.com**. The iOS native build is skipped; cross-platform source is retained.
 
@@ -28,7 +28,7 @@ The EAS `preview` profile also specifies this public origin and disables clearte
 - Requests, proposed plans, versioned approval/reservation, partial dispatch, per-batch partial receipt, accepted versus damage/quarantine quantities and cancellation of unshipped stock. Roles and site scopes gate controls; server checks remain authoritative.
 - Batch lookup and native camera QR scanner with manual entry fallback. `GRD:BATCH:<internal-id>` and `GRD:SHIPMENT:<internal-id>` labels are accepted; a product barcode is never treated as batch/expiry evidence. Images stay on device; identifiers go to the configured backend for verification.
 - Physical counts create review cases. Mobile counts retain the original batch timestamp and are rejected for recount if the backend stock changed before upload. The phone never silently adjusts or resolves a case.
-- Evaluated forecast jobs, forecast intervals, held-out baseline metrics, policy-simulation results, declared data provenance, reconciliation, scoped activity and grounded read-only assistant. Existing case resolution, return disposition and demand import remain in the website action centre.
+- Evaluated forecast jobs, forecast intervals, held-out baseline metrics, policy-simulation results, declared data provenance, reconciliation, scoped activity and grounded read-only assistant. The new phone Operations desk includes return transitions/disposition, supplier receipts, assigned count rounds and alerts. Demand imports remain on the website.
 
 ## Local launch
 

@@ -16,7 +16,8 @@ COMPARABLE_PROJECT_RESEARCH_2026-11-02.md, integrated with the existing stock le
 - [x] Readable stock cards and linked ledger evidence
 - [x] Separate return approval, dispatch, transit, receipt and disposition
 - [x] Android durable offline records and at least 50 repeat-safe commands
-- [ ] Final release gates: deploy, verify live, finish Android build/device acceptance and update project map
+- [x] Shared web/Android workflows, migration, live deployment, updated Android build and project map
+- [ ] Physical-device acceptance: camera optics/permission flows and actual offline field journey
 
 External activation dependencies: real supplier/courier credentials and Android push
 credentials must be supplied before those delivery adapters can send external events.
@@ -39,12 +40,10 @@ No iOS build. Free hosting only. Preserve existing cloud records.
 
 ## Verification recorded so far
 
-- 69 PostgreSQL tests and 68 SQLite tests passed before the final scope regression
-  was added; full final counts will be recorded in the release verification.
+- Final backend suite: 70 PostgreSQL tests pass; 69 SQLite tests pass with the PostgreSQL-only concurrency case skipped. Ruff passes.
 - Android lint/typecheck and all 13 logic tests passed, including 50 persisted
   commands, restart, lost reply, scope isolation, expiry and failed storage commits.
-- Website pack-validation and delivery-proof form tests passed; a full final run
-  is pending. Browser testing found and fixed the quantity minimum/step offset.
+- All 20 website tests and the production build pass. Browser testing found and fixed the quantity minimum/step offset and verified supplier draft/approval/acknowledgement/partial receipt, count submission and the live benchmark.
 - Private pre-upgrade Neon backup restored into a separate local PostgreSQL database;
   migration and schema check passed with all existing row counts and stock totals
   unchanged (29 batches, 31 movements, 2 plans and 2 shipments).
@@ -67,3 +66,27 @@ operations and is distributed with source attribution and its non-commercial lic
 Continuous background escalation, real provider push, supplier/courier integrations,
 company datasets/policies, pilot acceptance and store distribution remain activation
 or acceptance work. iOS build remains excluded by the user's instruction.
+
+## Live release
+
+Website/API: https://grd-supply-demo.onrender.com (Render Free + Neon Free).
+The live upgrade preserves existing stock records. Acceptance fixtures add labelled
+saved comparisons, a hypothetical flood-route scenario, a supplier **draft**, an
+assigned count and persistent exceptions; these actions do not move physical stock.
+The original public N02BE benchmark completed through the hosted worker (300 complete
+weeks). Its validation-selected recent-four-week baseline does not win every final
+held-out horizon; all methods and measured coverage remain visible.
+
+Android: `outputs/mobile-demo/GRD-Supply-Android.apk` and the versioned
+`GRD-Supply-Android-1.2.0.apk`. The package targets the same HTTPS API, version 1.2.0 /
+code 3, with cleartext traffic disabled. It remains a debug-signed demonstration
+package, not a store release. Package verification and an emulator cold launch passed.
+Android Studio's interactive device view timed out while attaching the emulator;
+therefore camera, denied-permission and full native offline field acceptance remain
+unverified. The 50-command restart/replay acceptance currently passes in automated
+logic tests, not as a physical-device claim.
+
+The map scanner reports two high-severity unauthenticated-controls warnings because
+it does not recognise the shared `Depends(context)` protection. Manual route inspection
+confirms all 80 private handlers require that check; only login and health are public.
+Unauthenticated and site-scope tests pass. The warnings are annotated on the map.

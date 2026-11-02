@@ -85,6 +85,10 @@ export class ChunkStore implements Store {
           generation: `${Date.now()}-${++this.counter}-${Math.random().toString(36).slice(2)}`,
           count: parts.length,
         };
+      if (parts.length > 1500)
+        throw new Error(
+          "Secure snapshot is too large; narrow your location scope.",
+        );
       const written: string[] = [];
       try {
         for (let i = 0; i < parts.length; i++) {
