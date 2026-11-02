@@ -6,7 +6,6 @@ from pathlib import Path
 import hashlib
 import json
 
-from .forecasting import forecast
 
 ASSETS = Path(__file__).with_name("assets")
 CATEGORIES = ["M01AB", "M01AE", "N02BA", "N02BE", "N05B", "N05C", "R03", "R06"]
@@ -26,6 +25,10 @@ def source():
 
 
 def run(category):
+    # Keep metadata/source reads lightweight in the API process. Only the
+    # calculation worker should load the ML stack on the 512 MB demo host.
+    from .forecasting import forecast
+
     if category not in CATEGORIES:
         raise ValueError("Unknown public benchmark category")
     with (ASSETS / "pharma-salesdaily.csv").open(newline="") as handle:
