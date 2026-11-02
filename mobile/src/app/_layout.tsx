@@ -26,6 +26,7 @@ function Gate() {
     >
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="detail" options={{ presentation: "modal" }} />
+      <Stack.Screen name="operations" options={{ presentation: "modal" }} />
       <Stack.Screen name="scan" options={{ presentation: "modal" }} />
     </Stack>
   );

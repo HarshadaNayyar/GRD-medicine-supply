@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
+import { ChunkStore } from "./chunkStore";
 import type { Store } from "./queue";
 
 // Browser preview has session memory only; native outbox/token use OS secure storage.
@@ -15,11 +16,11 @@ export const vault: Store =
           memory.delete(k);
         },
       }
-    : {
+    : new ChunkStore({
         get: (k) => SecureStore.getItemAsync(k),
         set: (k, v) =>
           SecureStore.setItemAsync(k, v, {
             keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
           }),
         remove: (k) => SecureStore.deleteItemAsync(k),
-      };
+      });

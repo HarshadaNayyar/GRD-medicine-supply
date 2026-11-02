@@ -50,7 +50,10 @@ def run_once(factory):
             evidence_type = s.get(Organisation, org).mode
             observations = [{"date": str(x.date), "quantity": x.quantity} for x in records]
 
-        if kind == "forecast":
+        if kind == "benchmark":
+            from .benchmark import run
+            result = run(payload["category"])
+        elif kind == "forecast":
             result = forecast(observations, date.fromisoformat(payload["as_of"]), payload["horizons"])
         else:
             cutoff = date.fromisoformat(payload["as_of"]) - timedelta(days=28)

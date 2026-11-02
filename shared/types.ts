@@ -1,4 +1,5 @@
 export interface Me {
+  session_expires_at?: string;
   id: string;
   email: string;
   role: string;
@@ -38,6 +39,16 @@ export interface Batch {
   updated_at: string;
 }
 export interface NetworkRow {
+  timeline?: import("./operations").TimelineDay[];
+  input_status?: string;
+  service_gap_units?: number | null;
+  action_deadline?: {
+    latest_action_on: string;
+    slack_days: number;
+    lead_days_upper: number;
+    approval_handling_days: number;
+    assumption: string;
+  } | null;
   location_id: string;
   name: string;
   district: string;
@@ -220,6 +231,7 @@ export interface Route {
   policy_source: string;
 }
 export interface Data {
+  operations?: import("./operations").Workflow<unknown>[];
   me: Me;
   products: Product[];
   locations: Location[];
@@ -241,4 +253,12 @@ export interface Option {
   evidence?: Explanation;
 }
 export type View =
-  "overview" | "actions" | "inventory" | "forecasts" | "activity" | "sources";
+  | "overview"
+  | "actions"
+  | "inventory"
+  | "forecasts"
+  | "activity"
+  | "sources"
+  | "planning"
+  | "operations"
+  | "evidence";

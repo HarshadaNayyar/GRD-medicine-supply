@@ -11,6 +11,7 @@ interface Props {
   onSelect: (id: string) => void;
   layer: string;
   filtered: string[];
+  scenario?: boolean;
 }
 const colors = {
   critical: "#ce5c49",
@@ -33,6 +34,7 @@ export default function NetworkMap({
   onSelect,
   layer,
   filtered,
+  scenario = false,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null),
     map = useRef<L.Map | null>(null),
@@ -211,7 +213,7 @@ export default function NetworkMap({
       const warehouse = node.kind === "warehouse";
       const icon = L.divIcon({
         className: `network-pin ${active ? "is-active" : ""} ${warehouse ? "is-warehouse" : ""}`,
-        html: `<div class="pin-dot" style="--pin-color:${color}">${warehouse ? '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m3 9 9-5 9 5v11H3V9Z"/><path d="M9 20v-7h6v7"/></svg>' : "<span></span>"}</div><div class="pin-label"><strong>${escape(warehouse ? "Central warehouse" : shortLocation(node.name))}</strong><span>${row.balance.known ? number(row.balance.available) + " available" : "Unknown balance"}${active ? " · Selected" : ""}</span></div>`,
+        html: `<div class="pin-dot" style="--pin-color:${color}">${warehouse ? '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m3 9 9-5 9 5v11H3V9Z"/><path d="M9 20v-7h6v7"/></svg>' : "<span></span>"}</div><div class="pin-label"><strong>${escape(warehouse ? "Central warehouse" : shortLocation(node.name))}</strong><span>${row.balance.known ? number(row.balance.available) + (scenario ? " projected" : " available") : "Unknown balance"}${active ? " · Selected" : ""}</span></div>`,
         iconSize: [170, 54],
         iconAnchor: warehouse ? [18, 62] : [18, 18],
       });

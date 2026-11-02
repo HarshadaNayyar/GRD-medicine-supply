@@ -269,3 +269,30 @@ class Job(Record, Base):
     result: Mapped[dict] = mapped_column(JSON, default=dict)
     error: Mapped[str | None] = mapped_column(Text)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Workflow(Record, Base):
+    """Versioned operational aggregate. Payloads validated by workflow-specific inputs.
+
+    Organisation lock serialises transitions and their ledger/idempotency writes.
+    Every location in a payload must also be present in location_ids.
+    """
+    __tablename__ = "workflows"
+    kind: Mapped[str] = mapped_column(String(40), index=True)
+    state: Mapped[str] = mapped_column(String(30), default="draft")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    location_ids: Mapped[list] = mapped_column(JSON, default=list)
+    payload: Mapped[dict] = mapped_column(JSON)
+    identity: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    __table_args__ = (UniqueConstraint("org_id", "kind", "identity"),)
+
+
+class Availability(Record, Base):
+    __tablename__ = "availability"
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id"))
+    location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"))
+    date: Mapped[datetime] = mapped_column(Date)
+    reported: Mapped[bool] = mapped_column(Boolean)
+    available: Mapped[bool] = mapped_column(Boolean)
+    source: Mapped[str] = mapped_column(String(500))
+    __table_args__ = (UniqueConstraint("org_id", "product_id", "location_id", "date"),)

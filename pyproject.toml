@@ -18,6 +18,8 @@ dev = ["pytest>=8,<10", "httpx>=0.27,<1", "ruff>=0.8,<1"]
 grd = "grd.cli:main"
 [tool.setuptools.packages.find]
 include = ["grd*"]
+[tool.setuptools.package-data]
+grd = ["assets/*.csv", "assets/*.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 [tool.ruff]

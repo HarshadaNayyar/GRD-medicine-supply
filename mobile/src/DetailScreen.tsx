@@ -47,6 +47,9 @@ function DetailContent({ kind, id }: { kind: string; id: string }) {
   const [receipt, setReceipt] = useState<
     Record<string, { accepted: string; damaged: string; reason: string }>
   >({});
+  const [receiver, setReceiver] = useState("");
+  const [deliveryReference, setDeliveryReference] = useState("");
+  const [shortLines, setShortLines] = useState<string[]>([]);
   const [confirm, setConfirm] = useState(false);
   // Keep the original batch snapshot even if a pull-to-refresh occurs while entering a count.
   const [countBaseline] = useState(
@@ -122,6 +125,13 @@ function DetailContent({ kind, id }: { kind: string; id: string }) {
           <Txt small>
             {location.coordinate_source} · {location.district}
           </Txt>
+          {row?.action_deadline && (
+            <Txt>
+              Act by {dateLabel(row.action_deadline.latest_action_on)} ·{" "}
+              {row.action_deadline.slack_days} days of slack (delivery +
+              approval buffer counted once).
+            </Txt>
+          )}
           {row && (
             <>
               <Txt small>
@@ -608,8 +618,45 @@ function DetailContent({ kind, id }: { kind: string; id: string }) {
                 connectivity fails. Retry the original entry from More.
               </Txt>
             </Card>
+            <Card>
+              <Field
+                label="Receiver name"
+                value={receiver}
+                onChangeText={setReceiver}
+              />
+              <Field
+                label="Delivery document reference"
+                value={deliveryReference}
+                onChangeText={setDeliveryReference}
+              />
+              {sh.lines
+                .filter((l) => l.received < l.quantity)
+                .map((l) => (
+                  <Button
+                    key={l.id}
+                    secondary
+                    title={`${shortLines.includes(l.id) ? "✓ Short / investigate" : "Mark short / investigate"} · ${l.batch_code || l.id}`}
+                    onPress={() =>
+                      setShortLines(
+                        shortLines.includes(l.id)
+                          ? shortLines.filter((x) => x !== l.id)
+                          : [...shortLines, l.id],
+                      )
+                    }
+                  />
+                ))}
+              <Button
+                secondary
+                title={
+                  confirm
+                    ? "✓ Batch, expiry and quantities checked"
+                    : "Confirm batch, expiry and physical quantities"
+                }
+                onPress={() => setConfirm(!confirm)}
+              />
+            </Card>
             <Button
-              title="Record receipt"
+              title="Record delivery proof & receipt"
               disabled={busy}
               onPress={() => {
                 void safely(async () => {
@@ -638,11 +685,28 @@ function DetailContent({ kind, id }: { kind: string; id: string }) {
                       };
                     })
                     .filter((l) => l.accepted + l.damaged > 0);
-                  if (!lines.length)
-                    throw new Error("Enter at least one received unit.");
+                  if (!lines.length && !shortLines.length)
+                    throw new Error(
+                      "Enter received units or identify a short delivery.",
+                    );
+                  if (
+                    !confirm ||
+                    receiver.trim().length < 2 ||
+                    deliveryReference.trim().length < 3
+                  )
+                    throw new Error(
+                      "Confirm the physical check, receiver and delivery document reference.",
+                    );
                   await post(
-                    `/shipments/${sh.id}/receipts`,
-                    { as_of: asOf, lines },
+                    `/shipments/${sh.id}/proof`,
+                    {
+                      as_of: asOf,
+                      lines,
+                      receiver: receiver.trim(),
+                      reference: deliveryReference.trim(),
+                      confirmed: true,
+                      short_lines: shortLines,
+                    },
                     `Receive shipment ${sh.id.slice(0, 8)} at ${loc(sh.destination_id)}`,
                   );
                 });

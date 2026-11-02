@@ -131,7 +131,7 @@ def create_app(database_url=None):
         try:
             with engine.connect() as conn:
                 revision = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-                if revision != "b8d3c71a402e":
+                if revision != "c92e56a1f710":
                     raise RuntimeError("Schema revision does not match this application release")
         except Exception:
             raise HTTPException(503, "Database or migrations unavailable") from None
@@ -154,7 +154,7 @@ def create_app(database_url=None):
             return {"access_token": token(user), "token_type": "bearer", "expires_in": 28800}
 
     @app.get("/api/v1/me", tags=["identity"])
-    def me(ctx=Depends(context)):
+    def me(ctx=Depends(context), credentials: HTTPAuthorizationCredentials = Depends(bearer)):
         _, u, o = ctx
         return {
             "id": u.id,
@@ -165,6 +165,7 @@ def create_app(database_url=None):
             "evidence_type": o.mode,
             "inventory_revision": o.revision,
             "scenario_on": str(o.scenario_on) if o.scenario_on else None,
+            "session_expires_at": __import__("datetime").datetime.fromtimestamp(decode(credentials.credentials)["exp"], __import__("datetime").timezone.utc).isoformat(),
         }
 
     @app.post("/api/v1/auth/logout", tags=["identity"])
@@ -1128,6 +1129,9 @@ def create_app(database_url=None):
     @app.get("/api/v1/scan/{code}", tags=["mobile"])
     def scan(code: str, ctx=Depends(context)):
         s, u, _ = ctx
+        if code.startswith("GRD:SHIPMENT:"):
+            from .operations import shipment_document
+            return shipment_document(s, u, code.removeprefix("GRD:SHIPMENT:"))
         # Internal labels only. Never infer batch/expiry from an ordinary product barcode.
         identifier = code.removeprefix("GRD:BATCH:")
         b = d.get(s, Batch, identifier, u)
@@ -1198,6 +1202,9 @@ def create_app(database_url=None):
             .isoformat(),
             "offline_rule": "Commands remain provisional until accepted; replay their persisted Idempotency-Key; HTTP409 requires reconciliation",
         }
+
+    from .operations_api import install_operations
+    install_operations(app, context)
 
     from .web import mount_workspace
 

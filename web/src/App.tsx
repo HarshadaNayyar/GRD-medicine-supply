@@ -16,6 +16,7 @@ import {
   FileCheck2,
   HeartPulse,
   LayoutDashboard,
+  Layers as LayersIcon,
   LogOut,
   MapPin,
   Menu,
@@ -65,6 +66,13 @@ import {
 import { Badge, Empty, Loading, Modal, SectionTitle, Stat } from "./ui";
 import NetworkMap from "./NetworkMap";
 import {
+  PlanningStudio,
+  RiskGrid,
+  TimelineEvidence,
+} from "./operations/PlanningStudio";
+import { OperationsDesk } from "./operations/OperationsDesk";
+import { EvidenceWorkspace } from "./operations/Evidence";
+import {
   PlanDialog,
   ReceiptDialog,
   ResolveDialog,
@@ -95,13 +103,17 @@ export type Dialog =
   | { type: "location"; locationId: string }
   | { type: "assistant" }
   | { type: "help" }
+  | { type: "timeline"; row: NetworkRow }
   | null;
 let demoAttempt: Promise<void> | undefined;
 const nav = [
   { id: "overview", label: "Network overview", icon: LayoutDashboard },
   { id: "actions", label: "Action centre", icon: Target },
+  { id: "planning", label: "Planning studio", icon: LayersIcon },
+  { id: "operations", label: "Operations desk", icon: Truck },
   { id: "inventory", label: "Inventory & batches", icon: Boxes },
   { id: "forecasts", label: "Forecasts & evidence", icon: Activity },
+  { id: "evidence", label: "Evidence & stock cards", icon: ShieldCheck },
   { id: "activity", label: "Operations log", icon: FileCheck2 },
   { id: "sources", label: "Data & provenance", icon: Database },
 ] as const;
@@ -393,6 +405,9 @@ export default function App() {
                 : "Shadow workspace"}
             </Badge>
             <span className="header-date">{dateLabel(asOf, true)}</span>
+            <button className="icon-button" aria-label="Refresh all workspace records" disabled={refreshing} onClick={reload}>
+              <RefreshCw size={17} className={refreshing ? "spin" : ""} />
+            </button>
             <button
               className="icon-button"
               aria-label="Open help"
@@ -403,7 +418,7 @@ export default function App() {
             <button
               className="icon-button notification-button"
               aria-label="Open action notifications"
-              onClick={() => navigate("actions")}
+              onClick={() => navigate("operations")}
             >
               <Bell size={18} />
               {actions.length > 0 && <i />}
@@ -794,6 +809,67 @@ export default function App() {
               onBatch={(batch) => setDialog({ type: "stock", batch })}
             />
           )}
+          {view === "overview" && currentNetwork && (
+            <RiskGrid
+              rows={rows}
+              onCell={(id) => {
+                const row = rows.find((r) => r.location_id === id);
+                if (row) {
+                  setSelected(id);
+                  setDialog({ type: "timeline", row });
+                }
+              }}
+            />
+          )}
+          {view === "planning" && (
+            <PlanningStudio
+              data={data}
+              productId={productId}
+              onProduct={setProductId}
+              locationId={selected}
+              onLocation={setSelected}
+              asOf={asOf}
+              onRefresh={reload}
+              notify={notify}
+            />
+          )}
+          {view === "operations" && (
+            <OperationsDesk
+              data={data}
+              asOf={asOf}
+              onRefresh={reload}
+              notify={notify}
+              onOpen={(kind, id) => {
+                if (kind === "case") {
+                  const item = data.cases.find((c) => c.id === id);
+                  if (item) setDialog({ type: "case", item });
+                } else if (kind === "hold" || kind === "stale_stock") {
+                  const batch = data.batches.find((b) => b.id === id);
+                  if (batch) setDialog({ type: "stock", batch });
+                } else if (
+                  kind === "late_shipment" ||
+                  kind === "short_receipt"
+                ) {
+                  const shipment = data.shipments.find((s) => s.id === id);
+                  if (shipment) setDialog({ type: "receipt", shipment });
+                } else if (kind === "deadline") {
+                  setProductId(id);
+                  navigate("overview");
+                } else
+                  notify(
+                    "Review the referenced record in its operations workspace.",
+                  );
+              }}
+            />
+          )}
+          {view === "evidence" && (
+            <EvidenceWorkspace
+              data={data}
+              asOf={asOf}
+              onRefresh={reload}
+              notify={notify}
+            />
+          )}
           {view === "forecasts" && (
             <ForecastWorkspace
               data={data}
@@ -835,6 +911,19 @@ export default function App() {
             <X size={16} />
           </button>
         </div>
+      )}
+      {dialog?.type === "timeline" && (
+        <TimelineEvidence
+          row={dialog.row}
+          onClose={() => setDialog(null)}
+          onPlan={() =>
+            setDialog({
+              type: "resolve",
+              locationId: dialog.row.location_id,
+              productId: dialog.row.product_id,
+            })
+          }
+        />
       )}
       {dialog?.type === "resolve" && product && (
         <ResolveDialog

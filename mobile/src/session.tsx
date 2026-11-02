@@ -12,6 +12,11 @@ import type { Data, Me, Network } from "../../shared/types";
 import { ApiError, serverOrigin, SessionChanged, Transport } from "./transport";
 import { Outbox, type Command } from "./queue";
 import { vault } from "./storage";
+import {
+  restoreWorkspace,
+  saveWorkspace,
+  type CachedWorkspace,
+} from "./offline";
 
 type Session = {
   data: Data | null;
@@ -28,6 +33,7 @@ type Session = {
   setError: (s: string) => void;
   asOf: string;
   synced: string | null;
+  offline: boolean;
   refresh: () => Promise<void>;
   pending: Command[];
   post: (path: string, body: unknown, label: string) => Promise<boolean>;
@@ -54,6 +60,7 @@ async function snapshot(api: Transport): Promise<Data> {
     datasets,
     reconciliation,
     routes,
+    operations,
   ] = await Promise.all([
     api.all<Data["products"][number]>("/products"),
     api.all<Data["locations"][number]>("/locations"),
@@ -67,6 +74,7 @@ async function snapshot(api: Transport): Promise<Data> {
     admin ? api.all<Data["datasets"][number]>("/datasets") : [],
     api.request<Data["reconciliation"]>("/inventory/reconciliation"),
     api.request<{ items: Data["routes"] }>("/routes"),
+    api.request<{ items: NonNullable<Data["operations"]> }>("/operations/all"),
   ]);
   return {
     me,
@@ -82,6 +90,7 @@ async function snapshot(api: Transport): Promise<Data> {
     datasets,
     reconciliation,
     routes: routes.items,
+    operations: operations.items,
   };
 }
 
@@ -101,6 +110,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [offline, setOffline] = useState(false);
+  const cache = useRef<CachedWorkspace | null>(null);
   const [synced, setSynced] = useState<string | null>(null);
   const [pending, setPending] = useState<Command[]>([]);
   const client = useRef<Transport | null>(null);
@@ -119,6 +130,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setProduct("");
     setPending([]);
     setSynced(null);
+    cache.current = null;
+    setOffline(false);
+    void vault.remove("grd.workspace.active");
     void vault.remove("grd.token");
     setError(
       "Session expired. Reconnect and sign in again. Pending actions remain securely saved for this account.",
@@ -135,6 +149,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (api !== client.current || sequence !== refreshSequence.current)
         return;
       setData(next);
+      setOffline(false);
+      if (cache.current) {
+        cache.current = {
+          ...cache.current,
+          data: next,
+          network: undefined,
+          savedAt: new Date().toISOString(),
+          expiresAt: next.me.session_expires_at || cache.current.expiresAt,
+        };
+        await saveWorkspace(vault, cache.current);
+      }
       setSynced(new Date().toISOString());
       setProduct((p) =>
         next.products.some((x) => x.id === p) ? p : next.products[0]?.id || "",
@@ -142,6 +167,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (outbox.current) setPending(await outbox.current.list());
       setError("");
     } catch (e) {
+      if (api === client.current && !(e instanceof SessionChanged))
+        setOffline(true);
       if (api === client.current && !(e instanceof SessionChanged))
         setError(
           e instanceof Error
@@ -159,6 +186,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       client.current?.authenticate(null);
       client.current = api;
       api.authenticate(token);
+      setApiState(api);
       const next = await snapshot(api);
       if (client.current !== api) throw new SessionChanged();
       const scope = await Crypto.digestStringAsync(
@@ -169,6 +197,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setPending(await outbox.current.list());
       await vault.set("grd.origin", base);
       await vault.set("grd.token", token);
+      cache.current = {
+        scope,
+        origin: base,
+        tokenFingerprint: await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          token,
+        ),
+        data: next,
+        savedAt: new Date().toISOString(),
+        expiresAt:
+          next.me.session_expires_at ||
+          new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      };
+      await saveWorkspace(vault, cache.current);
+      setOffline(false);
       setApiState(api);
       setOrigin(base);
       setData(next);
@@ -185,7 +228,30 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         const base = await vault.get("grd.origin");
         const token = await vault.get("grd.token");
         if (base) setOrigin(serverOrigin(base));
-        if (base && token) await open(serverOrigin(base), token);
+        if (base && token) {
+          const safeBase = serverOrigin(base);
+          const fingerprint = await Crypto.digestStringAsync(
+            Crypto.CryptoDigestAlgorithm.SHA256,
+            token,
+          );
+          const cached = await restoreWorkspace(vault, safeBase, fingerprint);
+          if (cached) {
+            const api = new Transport(safeBase, expire);
+            api.authenticate(token);
+            client.current = api;
+            cache.current = cached;
+            outbox.current = new Outbox(vault, cached.scope);
+            setPending(await outbox.current.list());
+            setApiState(api);
+            setData(cached.data);
+            setProduct(cached.data.products[0]?.id || "");
+            setSynced(cached.savedAt);
+            setNetwork(cached.network || null);
+            setOffline(true);
+            setLoading(false);
+          }
+          await open(safeBase, token);
+        }
       } catch {
         setError(
           "Connect to the server and sign in. Secure pending actions are retained on this device.",
@@ -194,19 +260,29 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     })();
-  }, [open]);
+  }, [open, expire]);
 
   useEffect(() => {
     const api = client.current;
     if (!data || !product || !api) return;
     let current = true;
-    setNetwork(null);
+    setNetwork((prev) =>
+      prev?.as_of === asOf && prev.table[0]?.product_id === product
+        ? prev
+        : null,
+    );
     void api
       .request<Network>(
         `/network?product_id=${encodeURIComponent(product)}&as_of=${asOf}&horizon=21`,
       )
       .then((n) => {
-        if (current && client.current === api) setNetwork(n);
+        if (current && client.current === api) {
+          setNetwork(n);
+          if (cache.current) {
+            cache.current = { ...cache.current, network: n };
+            void saveWorkspace(vault, cache.current).catch(() => {});
+          }
+        }
       })
       .catch((e) => {
         if (current && client.current === api && !(e instanceof SessionChanged))
@@ -216,6 +292,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       current = false;
     };
   }, [data, product, asOf]);
+
+  useEffect(() => {
+    if (!data?.me.session_expires_at) return;
+    const remaining = Date.parse(data.me.session_expires_at) - Date.now();
+    const timer = setTimeout(expire, Math.max(0, remaining));
+    return () => clearTimeout(timer);
+  }, [data?.me.session_expires_at, expire]);
 
   async function login(base: string, email: string, password: string) {
     base = serverOrigin(base);
@@ -260,6 +343,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await box.add(command);
       saved = true;
       if (api !== client.current) throw new SessionChanged();
+      if (offline) {
+        setError(
+          "Action saved securely on this device. Reconnect and sync the original pending entry.",
+        );
+        return true;
+      }
       await box.send(api, command);
       if (api === client.current) {
         await refresh();
@@ -291,6 +380,32 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     try {
       await box.send(api, command);
       await refresh();
+    } catch (error) {
+      if (
+        error instanceof ApiError &&
+        [400, 403, 404, 409, 422].includes(error.status) &&
+        api === client.current &&
+        data?.locations.length
+      ) {
+        const location = data.locations.find(
+          (l) =>
+            data.me.role === "admin" || data.me.location_ids.includes(l.id),
+        );
+        if (location)
+          await api
+            .request(
+              "/inbox/sync-failures",
+              "POST",
+              {
+                location_id: location.id,
+                command_id: command.id,
+                reason: error.message.slice(0, 500),
+              },
+              "sync-report-" + command.id,
+            )
+            .catch(() => {});
+      }
+      throw error;
     } finally {
       if (api === client.current) setPending(await box.list());
       locked.current = false;
@@ -318,6 +433,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setError,
         asOf,
         synced,
+        offline,
         refresh,
         pending,
         post,

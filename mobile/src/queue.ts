@@ -26,7 +26,7 @@ function canonical(value: unknown): string {
   );
 }
 
-/** Small encrypted native outbox: each command is a separate platform keychain item.
+/** Encrypted native outbox: commands and index use atomically committed vault chunks.
  * Persist the original key/body before transmission. Refresh authoritative records
  * after receipt. Offline entries never alter displayed server balances.
  */
@@ -75,17 +75,17 @@ export class Outbox {
         throw new Error(
           "A matching action already needs confirmation or reconciliation. Review the original in Pending actions.",
         );
-      if (ids.length >= 8)
+      if (ids.length >= 100)
         throw new Error(
-          "Sync or resolve the 8 pending actions before recording more.",
+          "Sync or resolve the 100 pending actions before recording more.",
         );
       const bytes = [...JSON.stringify(command)].reduce((n, char) => {
         const point = char.codePointAt(0)!;
         return n + (point < 128 ? 1 : point < 2048 ? 2 : point < 65536 ? 3 : 4);
       }, 0);
-      if (bytes > 1600)
+      if (bytes > 25000)
         throw new Error(
-          "This action is too large for the secure offline outbox. Record fewer lines.",
+          "This action is too large for the secure offline outbox. Record fewer lines (25 KB command limit).",
         );
       if (ids.includes(command.id))
         throw new Error(
@@ -162,4 +162,11 @@ export function quantity(value: string, pack = 1, allowZero = false) {
       `Use ${allowZero ? "zero or " : ""}positive quantities in packs of ${pack}.`,
     );
   return n;
+}
+
+export function internalLabel(value: string) {
+  const raw = value.trim();
+  if (!/^GRD:(BATCH|SHIPMENT):[A-Za-z0-9_-]{1,80}$/.test(raw))
+    throw new Error("Use a GRD internal batch or shipment QR identifier.");
+  return raw;
 }

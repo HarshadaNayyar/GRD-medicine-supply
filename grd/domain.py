@@ -195,7 +195,19 @@ def require_fresh_stock(org, stock):
         fail("Source stock is stale; reconcile before creating or dispatching an actionable plan")
 
 
-def choose(s, user, org, source, dest, product_id, quantity, as_of, request_id=None, extra_reserved=None):
+def choose(
+    s,
+    user,
+    org,
+    source,
+    dest,
+    product_id,
+    quantity,
+    as_of,
+    request_id=None,
+    extra_reserved=None,
+    extra_incoming=0,
+):
     operating_date(org, as_of)
     scope(user, source, dest)
     if source == dest:
@@ -294,7 +306,7 @@ def choose(s, user, org, source, dest, product_id, quantity, as_of, request_id=N
                     x.quantity - x.received
                     for x in s.scalars(select(ShipmentLine).where(ShipmentLine.shipment_id == ship.id))
                 )
-        if occupied + incoming + quantity > rt.destination_capacity_units:
+        if occupied + incoming + quantity + extra_incoming > rt.destination_capacity_units:
             fail("Destination product storage capacity exceeded")
     return {
         "allocations": allocations,

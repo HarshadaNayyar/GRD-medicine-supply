@@ -292,6 +292,12 @@ export function Page({
             <Text style={[s.h, { fontSize: 13, color: c.green }]}>GRD</Text>
           </View>
         </View>
+        {session.offline && (
+          <Badge
+            text="Offline snapshot · pending actions require server acceptance"
+            tone="warning"
+          />
+        )}
         {!!session.error && (
           <Card style={{ backgroundColor: "#FBEFE8", borderColor: "#EDD4C5" }}>
             <View style={s.between}>

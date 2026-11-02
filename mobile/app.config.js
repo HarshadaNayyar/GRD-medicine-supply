@@ -1,7 +1,7 @@
 const expo = {
   name: "GRD Supply",
   slug: "grd-supply-mobile",
-  version: "1.1.0",
+  version: "1.2.0",
   orientation: "default",
   icon: "./assets/icon.png",
   userInterfaceStyle: "light",
@@ -15,7 +15,7 @@ const expo = {
     },
   },
   android: {
-    versionCode: 2,
+    versionCode: 3,
     adaptiveIcon: {
       backgroundColor: "#193C32",
       foregroundImage: "./assets/android-icon-foreground.png",
@@ -39,7 +39,7 @@ const expo = {
       "expo-camera",
       {
         cameraPermission:
-          "Allow GRD Supply to scan internal batch QR labels. Images stay on your device.",
+          "Allow GRD Supply to scan internal batch and shipment QR labels. Images stay on your device.",
         recordAudioAndroid: false,
       },
     ],

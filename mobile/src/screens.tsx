@@ -454,6 +454,10 @@ export function MoreScreen() {
           illustrative.
         </Txt>
       </Card>
+      <Button
+        title="Open operations desk · inbox, counts, suppliers & returns"
+        onPress={() => router.push("/operations")}
+      />
       <Heading>Pending actions · {pending.length}</Heading>
       <Txt small>
         {Platform.OS === "web"

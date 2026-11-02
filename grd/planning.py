@@ -115,6 +115,7 @@ def network_view(s, user, org, product_id, as_of, horizon):
             "history_days": samples,
             "forecast_job_id": published.id if published else None,
             "forecast_range": published.result.get("forecast") if published else None,
+            "projection_forecast": published.result.get("operational_forecast", published.result.get("forecast")) if published else None,
             "shortage_date": shortage,
             "days_of_cover": pos["available"] / daily if daily else None,
             "projected_expiry_units": expiry_exposure,
@@ -144,6 +145,18 @@ def network_view(s, user, org, product_id, as_of, horizon):
                 "properties": props,
             }
         )
+    from .scenarios import deadline, freeze, project
+
+    base = {"table": risks}
+    snapshot = freeze(s, user, org, product_id, as_of, horizon, base)
+    projection = project(snapshot)
+    for row, projected in zip(risks, projection["rows"]):
+        row.update(projected)
+        row["status"] = "unknown" if projected["service_gap_units"] is None else "shortage" if projected["shortage_date"] else "covered"
+        row["action_deadline"] = deadline(s, user, row, as_of)
+        frozen = next(x for x in snapshot["locations"] if x["location_id"] == row["location_id"])
+        row["inbound_units"] = sum(x["quantity"] for x in frozen["incoming"] if x["eligible"])
+        row["projected_expiry_units"] = sum(x["expiry"] for x in projected["timeline"])
     return {
         "type": "FeatureCollection",
         "features": features,

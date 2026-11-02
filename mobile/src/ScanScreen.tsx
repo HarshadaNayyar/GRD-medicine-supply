@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Platform, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router } from "expo-router";
-import { batchLabel } from "./queue";
+import { internalLabel } from "./queue";
 import { useSession } from "./session";
 import { Button, Card, Field, Heading, Page, Txt } from "./ui";
 
@@ -17,13 +17,16 @@ export function ScanScreen() {
     setReading(true);
     setCamera(false);
     try {
-      const result = await api!.request<{ batch: { id: string } }>(
-        "/scan/" + encodeURIComponent(batchLabel(raw)),
-      );
+      const result = await api!.request<{
+        batch?: { id: string };
+        shipment?: { id: string };
+      }>("/scan/" + encodeURIComponent(internalLabel(raw)));
       await refresh();
       router.replace({
         pathname: "/detail",
-        params: { kind: "batch", id: result.batch.id },
+        params: result.shipment
+          ? { kind: "shipment", id: result.shipment.id }
+          : { kind: "batch", id: result.batch!.id },
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to verify this label.");
@@ -38,7 +41,7 @@ export function ScanScreen() {
     >
       <Button title="← Back to stock" secondary onPress={() => router.back()} />
       <Card>
-        <Heading>Verify a batch</Heading>
+        <Heading>Verify a batch or shipment</Heading>
         <Txt>
           Use a GRD internal label that identifies the batch record.
           Verification checks your organisation and site access against the
@@ -86,10 +89,10 @@ export function ScanScreen() {
       )}
       <Card>
         <Field
-          label="Internal batch label"
+          label="Internal batch or shipment label"
           value={value}
           onChangeText={setValue}
-          placeholder="GRD:BATCH:batch-id"
+          placeholder="GRD:SHIPMENT:shipment-id"
         />
         <Button
           title={reading ? "Verifying…" : "Verify internal label"}

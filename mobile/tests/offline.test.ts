@@ -126,12 +126,12 @@ test("failed persistence and capacity limits prevent new commands from being rec
   await assert.rejects(broken.add(command()));
   assert.deepEqual(await broken.list(), []);
   const box = new Outbox(disk, "a");
-  for (let i = 0; i < 8; i++)
+  for (let i = 0; i < 100; i++)
     await box.add({
       ...command("event-" + i),
       path: `/shipments/delivery-${i}/receipts`,
     });
-  await assert.rejects(box.add(command("ninth")), /8 pending/);
+  await assert.rejects(box.add(command("overflow")), /100 pending/);
 });
 test("internal QR verification rejects generic barcodes, URLs and unsafe identifiers", () => {
   assert.equal(batchLabel("GRD:BATCH:batch-123"), "GRD:BATCH:batch-123");

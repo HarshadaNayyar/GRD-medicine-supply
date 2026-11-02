@@ -21,3 +21,6 @@ web/dist/
 web/*.tsbuildinfo
 web/test-results/
 web/playwright-report/
+
+# Public benchmark snapshot, attributed in the companion manifest.
+!grd/assets/*.csv
