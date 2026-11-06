@@ -1,8 +1,8 @@
-# GRD Supply Intelligence
+# Pharma Path
 
 Shared backend for the NESFIC-I-09 medicine supply project: desktop web and React Native Android/iOS clients use one authenticated API and transactional inventory ledger.
 
-**Live synthetic demo:** [GRD Supply Intelligence](https://grd-supply-demo.onrender.com). The polished React website, authenticated backend and forecasting worker run on Render Free with persistent Neon Free PostgreSQL. The Android client connects to the same HTTPS origin; the iOS native build is skipped. Free hosting sleeps when idle, so open it about a minute before a demonstration. See [hosting](docs/FREE_DEPLOYMENT.md), [mobile handoff](docs/MOBILE_DEMO.md) and [PRD status](docs/PRD_STATUS.md). Real company-data activation and a measured GRD pilot remain outstanding.
+**Live synthetic demo:** [Pharma Path](https://grd-supply-demo.onrender.com). The polished React website, authenticated backend and forecasting worker run on Render Free with persistent Neon Free PostgreSQL. The Android client connects to the same HTTPS origin; the iOS native build is skipped. Free hosting sleeps when idle, so open it about a minute before a demonstration. See [hosting](docs/FREE_DEPLOYMENT.md), [mobile handoff](docs/MOBILE_DEMO.md) and [PRD status](docs/PRD_STATUS.md). Real company-data activation and a measured GRD pilot remain outstanding.
 
 ## Run locally
 
