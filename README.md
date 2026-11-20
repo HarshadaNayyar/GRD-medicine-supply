@@ -1,5 +1,5 @@
-# GRD-medicine-supply
-# GRD Supply Intelligence
+# PharmaPath
+
 
 Medicine demand forecasting, stock-out risk detection and order/transfer
 recommendations for 3 Assam distributors (Guwahati, Dibrugarh, Silchar).
