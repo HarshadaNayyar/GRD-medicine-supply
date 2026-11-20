@@ -1,4 +1,4 @@
-#GRD Medicine Supply 
+GRD Medicine Supply 
 ## PharmaPath
 
 
