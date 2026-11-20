@@ -1,4 +1,5 @@
-# PharmaPath
+#GRD Medicine Supply 
+## PharmaPath
 
 
 Medicine demand forecasting, stock-out risk detection and order/transfer
